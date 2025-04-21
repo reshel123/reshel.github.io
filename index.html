@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI 助手</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 全局样式 - 添加背景图到整个页面 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #0a0a20;
+            color: #d5d5ff;
+            position: relative;
+            min-height: 100vh;
+            width: 100%;
+        }
+        
+        /* 添加全局背景图 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('pacman-background.jpg');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* 固定背景图不随滚动 */
+            z-index: -10;
+            opacity: 0.9;
+        }
+        
+        /* 修改提示页面背景方式 */
+        .proxy-notice {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 32, 0.7); /* 半透明深色背景 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            text-align: center;
+            padding: 20px;
+            backdrop-filter: blur(5px); /* 模糊效果 */
+        }
+        
+        /* 移除旧的背景图容器，使用全局背景 */
+        .pacman-bg {
+            display: none; /* 不再需要此元素 */
+        }
+        
+        /* 移除容器的背景图层，使用全局背景 */
+        .container {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            z-index: 1;
+            background: rgba(20, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        /* 移除旧的容器背景图设置 */
+        .container::before {
+            display: none; /* 不再需要此伪元素 */
+        }
+        
+        /* 头部样式 */
+        header {
+            background: rgba(40, 40, 70, 0.85);
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(100, 100, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 0, 255, 0.2);
+            backdrop-filter: blur(5px);
+            border-radius: 12px 12px 0 0;
+            margin-top: 20px;
+        }
+        
+        header h1 {
+            color: #80acff;
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+            margin: 0 0 15px 0;
+        }
+        
+        .model-selector {
+            display: flex;
+            align-items: center;
+        }
+        
+        .model-selector label {
+            margin-right: 10px;
+            color: #d5d5ff;
+        }
+        
+        .model-selector select {
+            background: rgba(60, 60, 100, 0.6);
+            color: white;
+            border: 1px solid rgba(100, 100, 255, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 0, 255, 0.1);
+        }
+        
+        .model-selector select:focus {
+            border-color: #4285f4;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.5);
+        }
+        
+        /* 主要内容区域 */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(20, 20, 40, 0.85); /* 更深的背景色 */
+            backdrop-filter: blur(5px);
+        }
+        
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 60vh;
+            background: rgba(10, 10, 30, 0.7); /* 黑色/深色背景 */
+            border-radius: 8px;
+            margin: 10px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            word-break: break-word;
+        }
+        
+        .user-message {
+            background: rgba(66, 133, 244, 0.6);
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+            box-shadow: 0 0 10px rgba(66, 133, 244, 0.4);
+        }
+        
+        .ai-message {
+            background: rgba(70, 70, 120, 0.6);
+            color: #eaeaff;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+            box-shadow: 0 0 10px rgba(100, 100, 255, 0.4);
+        }
+        
+        .welcome-message {
+            background: rgba(40, 40, 80, 0.7); /* 更深的背景 */
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #eaeaff;
+            box-shadow: 0 0 15px rgba(60, 60, 150, 0.3);
+        }
+        
+        .loading {
+            font-style: italic;
+            background: rgba(100, 100, 140, 0.4);
+        }
+        
+        .input-container {
+            padding: 15px;
+            background: rgba(30, 30, 50, 0.9); /* 稍微深一点的背景 */
+            border-top: 1px solid rgba(100, 100, 255, 0.3);
+            display: flex;
+            box-shadow: 0 0 15px rgba(0, 0, 255, 0.2);
+            backdrop-filter: blur(5px);
+            border-radius: 0 0 12px 12px;
+            margin: 0 10px 10px 10px;
+        }
+        
+        textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(100, 100, 255, 0.5);
+            border-radius: 6px;
+            resize: none;
+            background: rgba(30, 30, 60, 0.8); /* 更深的背景 */
+            color: white;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #4285f4;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.3);
+        }
+        
+        #sendButton {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 6px;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #sendButton:hover {
+            background-color: #5295ff;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(82, 149, 255, 0.5);
+        }
+        
+        #sendButton:active {
+            transform: scale(0.98);
+        }
+        
+        /* 页脚样式 */
+        footer {
+            text-align: center;
+            padding: 15px;
+            background: rgba(30, 30, 50, 0.85);
+            color: #a0a0d0;
+            font-size: 0.9em;
+            box-shadow: 0 0 15px rgba(0, 0, 255, 0.2);
+            margin-bottom: 20px;
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .proxy-notice-content {
+            max-width: 500px;
+            background: rgba(40, 40, 70, 0.85); /* 稍微透明的背景 */
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(120, 120, 255, 0.3);
+            color: white;
+            position: relative;
+            z-index: 2;
+            border: 1px solid rgba(100, 100, 255, 0.3);
+            backdrop-filter: blur(5px); /* 添加模糊效果使文本更易读 */
+        }
+        
+        .proxy-notice h2 {
+            color: #80acff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+        }
+        
+        .proxy-notice p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: #d5d5ff;
+        }
+        
+        .proxy-notice button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.5);
+        }
+        
+        .proxy-notice button:hover {
+            background-color: #5295ff;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(82, 149, 255, 0.7);
+        }
+        
+        .proxy-notice button:active {
+            transform: scale(0.98);
+        }
+        
+        /* 按钮点击波纹效果 */
+        .ripple {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 提示页面 -->
+    <div class="proxy-notice" id="proxyNotice">
+        <div class="pacman-bg">
+            <!-- 删除之前的动画元素，直接使用背景图片 -->
+        </div>
+        <div class="proxy-notice-content">
+            <h2>使用提示</h2>
+            <p>尊敬的用户，Gemini AI 助手使用了 Google API，需要网络代理才能正常访问。</p>
+            <p>请确保您的网络环境已配置适当的代理服务，否则可能无法连接到 Gemini 服务。</p>
+            <p>如果遇到连接问题，请检查您的网络设置或联系网络管理员获取帮助。</p>
+            <button id="acknowledgeBtn">我已了解</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Gemini AI 助手</h1>
+            <div class="model-selector">
+                <label for="modelSelect">选择模型：</label>
+                <select id="modelSelect">
+                    <option value="models/gemini-1.5-flash:generateContent">Gemini 1.5 Flash (文本)</option>
+                    <option value="models/gemini-1.5-pro:generateContent">Gemini 1.5 Pro (文本)</option>
+                    <option value="models/gemini-2.0-flash:generateContent">Gemini 2.0 Flash (文本)</option>
+                    <option value="models/gemini-1.5-flash-latest:generateContent">Gemini 1.5 Flash Latest (文本)</option>
+                    <option value="models/gemini-1.5-pro-latest:generateContent">Gemini 1.5 Pro Latest (文本)</option>
+                </select>
+            </div>
+        </header>
+        
+        <main>
+            <div class="chat-container" id="chatContainer">
+                <div class="welcome-message">
+                    <p>你好！我是由 Gemini 驱动的 AI 助手，有什么我可以帮助你的？</p>
+                </div>
+                <!-- 聊天记录将在这里动态添加 -->
+            </div>
+            
+            <div class="input-container">
+                <textarea id="userInput" placeholder="在这里输入你的问题..." rows="3"></textarea>
+                <button id="sendButton">发送</button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>© 2025 Gemini AI 助手 | 作者：黄金树 | API by Google</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        // 处理提示页面
+        document.addEventListener('DOMContentLoaded', function() {
+            const proxyNotice = document.getElementById('proxyNotice');
+            const acknowledgeBtn = document.getElementById('acknowledgeBtn');
+            const sendButton = document.getElementById('sendButton');
+            
+            // 使用sessionStorage替代localStorage
+            if (sessionStorage.getItem('proxyNoticeAcknowledged') === 'true') {
+                proxyNotice.classList.add('hidden');
+            }
+            
+            // 添加按钮点击波纹效果
+            acknowledgeBtn.addEventListener('click', function(e) {
+                addRippleEffect(this, e);
+                
+                // 播放确认音效
+                if (typeof playSound === 'function') {
+                    playSound('modelSound');
+                }
+                
+                // 添加按钮动画效果
+                this.classList.add('clicked');
+                
+                // 延迟隐藏提示页面，让用户能看到按钮效果
+                setTimeout(() => {
+                    proxyNotice.classList.add('hidden');
+                    sessionStorage.setItem('proxyNoticeAcknowledged', 'true');
+                    
+                    // 清理波纹元素
+                    setTimeout(() => {
+                        this.querySelector('.ripple')?.remove();
+                        this.classList.remove('clicked');
+                    }, 600);
+                }, 300);
+            });
+            
+            // 给发送按钮也添加波纹效果
+            sendButton.addEventListener('click', function(e) {
+                addRippleEffect(this, e);
+            });
+            
+            // 通用的波纹效果函数
+            function addRippleEffect(button, e) {
+                // 创建波纹效果
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                button.appendChild(ripple);
+                
+                // 设置波纹位置
+                const rect = button.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = `${size}px`;
+                ripple.style.left = `${e.clientX - rect.left - size/2}px`;
+                ripple.style.top = `${e.clientY - rect.top - size/2}px`;
+                
+                // 自动清理波纹元素
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            }
+        });
+    </script>
+</body>
+</html> 
