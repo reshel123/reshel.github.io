@@ -163,8 +163,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 获取响应后播放接收音效
                 playSound('receiveSound');
                 
-                // 添加AI回复到聊天界面
-                addMessageToChat('ai', response);
+                // 处理R1模型的思考过程
+                if (typeof response === 'object' && response.reasoning) {
+                    addThinkingProcess(response.reasoning);
+                    addMessageToChat('ai', response.content);
+                } else {
+                    // 普通模型只添加回复
+                    addMessageToChat('ai', response);
+                }
                 
                 // 自动滚动到底部
                 chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -179,6 +185,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 自动滚动到底部
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             });
+    }
+    
+    function addThinkingProcess(reasoning) {
+        // 创建思考过程容器
+        const thinkingDiv = document.createElement('div');
+        thinkingDiv.className = 'message ai-thinking';
+        
+        // 创建思考标题
+        const thinkingTitle = document.createElement('div');
+        thinkingTitle.className = 'thinking-title';
+        thinkingTitle.textContent = '思考过程：';
+        thinkingDiv.appendChild(thinkingTitle);
+        
+        // 添加思考内容
+        const thinkingContent = document.createElement('div');
+        thinkingContent.className = 'thinking-content';
+        thinkingContent.innerHTML = reasoning.replace(/\n/g, '<br>');
+        thinkingDiv.appendChild(thinkingContent);
+        
+        // 添加到聊天容器
+        chatContainer.appendChild(thinkingDiv);
     }
     
     function addMessageToChat(sender, text) {
@@ -197,25 +224,39 @@ document.addEventListener('DOMContentLoaded', function() {
             // 获取当前选择的模型
             const selectedModel = modelSelect.value;
             
+            // 准备API请求参数
+            let requestBody = {
+                model: selectedModel, // 使用用户选择的模型
+                messages: [
+                    {role: 'system', content: '你是一个有用的AI助手，提供准确、有帮助的回答。'},
+                    {role: 'user', content: prompt}
+                ],
+                temperature: 0.7,
+                max_tokens: 1024,
+                stream: false
+            };
+            
+            // 为R1模型设置特殊的系统消息，让它显示思考过程
+            if (selectedModel === 'deepseek-reasoner') {
+                requestBody.messages[0].content = '你是一个有用的AI助手，提供准确、有帮助的回答。请在回答前先写出你的思考过程，以"思考过程："开头，然后再给出最终答案，以"回答："开头。';
+            }
+            
+            // 为了调试，使用完整的选项
+            console.log('发送请求:', requestBody);
+            
             const response = await fetch('https://api.deepseek.com/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${API_KEY}`
                 },
-                body: JSON.stringify({
-                    model: selectedModel, // 使用用户选择的模型
-                    messages: [
-                        {role: 'system', content: '你是一个有用的AI助手，提供准确、有帮助的回答。'},
-                        {role: 'user', content: prompt}
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                    stream: false
-                })
+                body: JSON.stringify(requestBody)
             });
             
             const data = await response.json();
+            
+            // 调试: 在控制台输出完整响应
+            console.log('API响应:', data);
             
             if (data.error) {
                 throw new Error(data.error.message || data.error);
@@ -223,6 +264,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!data.choices || data.choices.length === 0) {
                 throw new Error('未收到有效回复');
+            }
+            
+            // 如果是R1模型，尝试解析回复中的思考过程
+            if (selectedModel === 'deepseek-reasoner') {
+                const content = data.choices[0].message.content;
+                // 尝试提取思考过程和回答
+                const thinkingMatch = content.match(/思考过程：([\s\S]*?)(?:回答：|$)/);
+                const answerMatch = content.match(/回答：([\s\S]*)/);
+                
+                if (thinkingMatch) {
+                    const thinking = thinkingMatch[1].trim();
+                    const answer = answerMatch ? answerMatch[1].trim() : (content.replace(/思考过程：[\s\S]*/, '')).trim();
+                    
+                    return {
+                        content: answer || content,
+                        reasoning: thinking
+                    };
+                }
             }
             
             return data.choices[0].message.content;
