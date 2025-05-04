@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // DeepSeek API密钥
     const API_KEY = 'sk-e46299984c8249bdbfd89d6bcd0cc07f';
     
+    // 添加聊天状态标志，防止用户在回答未完成时提问
+    let isChatInProgress = false;
+    
     // 发送按钮点击事件
     sendButton.addEventListener('click', sendMessage);
     
@@ -42,6 +45,25 @@ document.addEventListener('DOMContentLoaded', function() {
             playSound('hoverSound');
         }
     });
+    
+    // 禁用聊天输入
+    function disableChatInput() {
+        userInput.disabled = true;
+        sendButton.disabled = true;
+        userInput.style.opacity = '0.6';
+        sendButton.style.opacity = '0.6';
+        isChatInProgress = true;
+    }
+    
+    // 启用聊天输入
+    function enableChatInput() {
+        userInput.disabled = false;
+        sendButton.disabled = false;
+        userInput.style.opacity = '1';
+        sendButton.style.opacity = '1';
+        isChatInProgress = false;
+        userInput.focus(); // 重新聚焦输入框
+    }
     
     // 音效功能 - 使用系统声音
     function playSound(type) {
@@ -126,12 +148,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     osc3.stop(audioContext.currentTime + 0.3);
                 }, 100);
             }, 100);
+        } else if (type === 'errorSound') {
+            // 错误提示音效
+            oscillator.type = 'square';
+            oscillator.frequency.value = 220; // A3音
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3);
         }
     }
     
     function sendMessage() {
         const message = userInput.value.trim();
         if (!message) return;
+        
+        // 检查是否有正在进行的聊天
+        if (isChatInProgress) {
+            // 播放错误提示音
+            playSound('errorSound');
+            
+            // 显示提示消息
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'message system-message warning';
+            warningDiv.textContent = '请等待当前问题回答完成后再提问！';
+            chatContainer.appendChild(warningDiv);
+            
+            // 自动滚动到底部
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 提示消息自动消失
+            setTimeout(() => {
+                chatContainer.removeChild(warningDiv);
+            }, 3000);
+            
+            return;
+        }
+        
+        // 禁用聊天输入
+        disableChatInput();
         
         // 播放发送消息音效
         playSound('sendSound');
@@ -174,6 +229,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 自动滚动到底部
                 chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // 重新启用聊天输入
+                enableChatInput();
             })
             .catch(error => {
                 // 移除加载指示器
@@ -184,6 +242,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 自动滚动到底部
                 chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // 重新启用聊天输入
+                enableChatInput();
             });
     }
     
@@ -236,11 +297,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 stream: false
             };
             
-            // 为R1模型设置特殊的系统消息，让它显示思考过程
-            if (selectedModel === 'deepseek-reasoner') {
-                requestBody.messages[0].content = '你是一个有用的AI助手，提供准确、有帮助的回答。请在回答前先写出你的思考过程，以"思考过程："开头，然后再给出最终答案，以"回答："开头。';
-            }
-            
             // 为了调试，使用完整的选项
             console.log('发送请求:', requestBody);
             
@@ -266,28 +322,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('未收到有效回复');
             }
             
-            // 如果是R1模型，尝试解析回复中的思考过程
-            if (selectedModel === 'deepseek-reasoner') {
-                const content = data.choices[0].message.content;
-                // 尝试提取思考过程和回答
-                const thinkingMatch = content.match(/思考过程：([\s\S]*?)(?:回答：|$)/);
-                const answerMatch = content.match(/回答：([\s\S]*)/);
-                
-                if (thinkingMatch) {
-                    const thinking = thinkingMatch[1].trim();
-                    const answer = answerMatch ? answerMatch[1].trim() : (content.replace(/思考过程：[\s\S]*/, '')).trim();
-                    
-                    return {
-                        content: answer || content,
-                        reasoning: thinking
-                    };
-                }
+            // 检查是否是R1模型，并且API返回了reasoning_content字段
+            if (selectedModel === 'deepseek-reasoner' && data.choices[0].message.reasoning_content) {
+                // 使用模型原生的思考过程
+                return {
+                    content: data.choices[0].message.content,
+                    reasoning: data.choices[0].message.reasoning_content
+                };
             }
             
+            // 如果没有返回reasoning_content字段，返回普通内容
             return data.choices[0].message.content;
         } catch (error) {
             console.error('API调用失败:', error);
             throw error;
         }
     }
-}); 
+});
