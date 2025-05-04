@@ -4,8 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendButton = document.getElementById('sendButton');
     const modelSelect = document.getElementById('modelSelect');
     
-    // 替换为您的Gemini API密钥
-    const API_KEY = 'AIzaSyCtdqns8YIxYimV_2inarnGNF6fwR6pag0';
+    // DeepSeek API密钥
+    const API_KEY = 'sk-e46299984c8249bdbfd89d6bcd0cc07f';
     
     // 发送按钮点击事件
     sendButton.addEventListener('click', sendMessage);
@@ -153,13 +153,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 获取当前选择的模型
         const selectedModel = modelSelect.value;
-        const [modelPath, method] = selectedModel.split(':');
         
-        // 构建API URL
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:${method}`;
-        
-        // 调用Gemini API
-        fetchGeminiResponse(message, API_URL)
+        // 调用DeepSeek API
+        fetchDeepSeekResponse(message)
             .then(response => {
                 // 移除加载指示器
                 chatContainer.removeChild(loadingDiv);
@@ -196,39 +192,40 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.appendChild(messageDiv);
     }
     
-    async function fetchGeminiResponse(prompt, apiUrl) {
+    async function fetchDeepSeekResponse(prompt) {
         try {
-            const response = await fetch(`${apiUrl}?key=${API_KEY}`, {
+            // 获取当前选择的模型
+            const selectedModel = modelSelect.value;
+            
+            const response = await fetch('https://api.deepseek.com/chat/completions', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
                 },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 1024
-                    }
+                    model: selectedModel, // 使用用户选择的模型
+                    messages: [
+                        {role: 'system', content: '你是一个有用的AI助手，提供准确、有帮助的回答。'},
+                        {role: 'user', content: prompt}
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 1024,
+                    stream: false
                 })
             });
             
             const data = await response.json();
             
             if (data.error) {
-                throw new Error(data.error.message);
+                throw new Error(data.error.message || data.error);
             }
             
-            if (!data.candidates || data.candidates.length === 0) {
+            if (!data.choices || data.choices.length === 0) {
                 throw new Error('未收到有效回复');
             }
             
-            return data.candidates[0].content.parts[0].text;
+            return data.choices[0].message.content;
         } catch (error) {
             console.error('API调用失败:', error);
             throw error;
