@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini AI 助手</title>
+    <title>DeepSeek AI 助手</title>
     <link rel="icon" href="icon.jpg" type="image/jpeg">
     <link rel="shortcut icon" href="icon.jpg" type="image/jpeg">
     <link rel="stylesheet" href="style.css">
@@ -323,31 +323,14 @@
     </style>
 </head>
 <body>
-    <!-- 提示页面 -->
-    <div class="proxy-notice" id="proxyNotice">
-        <div class="pacman-bg">
-            <!-- 删除之前的动画元素，直接使用背景图片 -->
-        </div>
-        <div class="proxy-notice-content">
-            <h2>使用提示</h2>
-            <p>尊敬的用户，Gemini AI 助手使用了 Google API，需要网络代理才能正常访问。</p>
-            <p>请确保您的网络环境已配置适当的代理服务，否则可能无法连接到 Gemini 服务。</p>
-            <p>如果遇到连接问题，请检查您的网络设置或联系网络管理员获取帮助。</p>
-            <button id="acknowledgeBtn">我已了解</button>
-        </div>
-    </div>
-
     <div class="container">
         <header>
-            <h1>Gemini AI 助手</h1>
+            <h1>DeepSeek AI 助手</h1>
             <div class="model-selector">
                 <label for="modelSelect">选择模型：</label>
                 <select id="modelSelect">
-                    <option value="models/gemini-1.5-flash:generateContent">Gemini 1.5 Flash (文本)</option>
-                    <option value="models/gemini-1.5-pro:generateContent">Gemini 1.5 Pro (文本)</option>
-                    <option value="models/gemini-2.0-flash:generateContent">Gemini 2.0 Flash (文本)</option>
-                    <option value="models/gemini-1.5-flash-latest:generateContent">Gemini 1.5 Flash Latest (文本)</option>
-                    <option value="models/gemini-1.5-pro-latest:generateContent">Gemini 1.5 Pro Latest (文本)</option>
+                    <option value="deepseek-chat">DeepSeek-V3 (标准模型)</option>
+                    <option value="deepseek-reasoner">DeepSeek-R1 (推理模型)</option>
                 </select>
             </div>
         </header>
@@ -355,7 +338,7 @@
         <main>
             <div class="chat-container" id="chatContainer">
                 <div class="welcome-message">
-                    <p>你好！我是由 Gemini 驱动的 AI 助手，有什么我可以帮助你的？</p>
+                    <p>你好！我是由 DeepSeek 驱动的 AI 助手，有什么我可以帮助你的？</p>
                 </div>
                 <!-- 聊天记录将在这里动态添加 -->
             </div>
@@ -367,49 +350,16 @@
         </main>
         
         <footer>
-            <p>© 2025 Gemini AI 助手 | 作者：黄金树 | API by Google</p>
+            <p>© 2025 DeepSeek AI 助手 | 作者：黄金树 | API by DeepSeek</p>
         </footer>
     </div>
     
     <script src="script.js"></script>
     <script>
-        // 处理提示页面
         document.addEventListener('DOMContentLoaded', function() {
-            const proxyNotice = document.getElementById('proxyNotice');
-            const acknowledgeBtn = document.getElementById('acknowledgeBtn');
             const sendButton = document.getElementById('sendButton');
             
-            // 使用sessionStorage替代localStorage
-            if (sessionStorage.getItem('proxyNoticeAcknowledged') === 'true') {
-                proxyNotice.classList.add('hidden');
-            }
-            
-            // 添加按钮点击波纹效果
-            acknowledgeBtn.addEventListener('click', function(e) {
-                addRippleEffect(this, e);
-                
-                // 播放确认音效
-                if (typeof playSound === 'function') {
-                    playSound('modelSound');
-                }
-                
-                // 添加按钮动画效果
-                this.classList.add('clicked');
-                
-                // 延迟隐藏提示页面，让用户能看到按钮效果
-                setTimeout(() => {
-                    proxyNotice.classList.add('hidden');
-                    sessionStorage.setItem('proxyNoticeAcknowledged', 'true');
-                    
-                    // 清理波纹元素
-                    setTimeout(() => {
-                        this.querySelector('.ripple')?.remove();
-                        this.classList.remove('clicked');
-                    }, 600);
-                }, 300);
-            });
-            
-            // 给发送按钮也添加波纹效果
+            // 给发送按钮添加波纹效果
             sendButton.addEventListener('click', function(e) {
                 addRippleEffect(this, e);
             });
