@@ -279,7 +279,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 初始化Peer
             peer = new Peer(peerId, {
-                debug: 2
+                debug: 2,
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' }
+                    ]
+                }
             });
             
             peer.on('open', function(id) {
@@ -356,163 +365,163 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 查找同一房间内的其他端点
+    // 改进房间用户发现机制
     function findPeersInRoom(roomCode) {
-        // 这里可以实现一个简单的发现机制
-        // 在真实应用中，我们需要一个信令服务器或使用公共数据库来发现对等点
-        // 但为了演示，我们可以尝试直接连接到一些可能在线的对等点
+        // 创建一个特定的房间标识，用于在PeerServer上查找同房间用户
+        const roomPrefix = `room-${roomCode}-`;
         
-        // 在没有真正的信令服务器的情况下，我们可以尝试连接到可能已在房间里的peer
-        // 使用一些常见的ID格式
+        // 在真实场景中，我们可以通过发现服务找到同一房间的用户
+        console.log(`搜索房间 ${roomCode} 中的其他成员...`);
         
-        // 指数退避重试
-        let retryCount = 0;
-        const maxRetry = 5;
-        const startDelay = 2000;
+        // 创建房间发现频道 - 这是一个固定ID，房间内所有用户都连接到这个ID进行发现
+        const discoveryId = `room-${roomCode}-discovery`;
         
-        function attemptConnection() {
-            // 如果我们不再在房间里，停止尝试
-            if (!currentRoom || !peer || peer.destroyed) return;
-            
-            // 每次尝试连接到一个随机的潜在对等点
-            const targetId = `room-${roomCode}-discoveryProbe-${retryCount}`;
-            
-            console.log(`尝试寻找房间 ${roomCode} 中的其他成员 (尝试 ${retryCount+1}/${maxRetry})...`);
-            
-            // 如果成功连接，对方会向我们发送房间内所有成员的列表
-            // 如果失败，我们可能是第一个加入房间的人
-            const conn = peer.connect(targetId, {
+        // 先尝试连接到房间的发现频道
+        try {
+            const discoveryConn = peer.connect(discoveryId, {
                 reliable: true,
                 metadata: {
                     type: 'discovery',
                     roomId: roomCode,
                     userName: userName,
+                    peerId: peer.id,
                     timestamp: new Date().toISOString()
                 }
             });
             
-            conn.on('open', function() {
-                console.log('成功发现已有房间，请求成员列表');
-                
-                // 发送发现请求
-                conn.send({
+            discoveryConn.on('open', function() {
+                console.log('已连接到房间发现频道，发送加入请求');
+                // 发送自己的信息，请求房间内所有成员信息
+                discoveryConn.send({
                     type: 'discovery',
+                    action: 'join',
                     roomId: roomCode,
-                    action: 'requestPeers',
                     userName: userName,
                     peerId: peer.id,
                     timestamp: new Date().toISOString()
                 });
             });
             
-            conn.on('error', function(err) {
-                // 不向用户显示这种错误，这是预期行为
-                console.log('未找到现有房间，可能是第一个加入的用户', err);
-                
-                // 增加重试计数
-                retryCount++;
-                
-                // 如果还没有达到最大重试次数，继续尝试
-                if (retryCount < maxRetry) {
-                    // 指数退避
-                    const delay = startDelay * Math.pow(1.5, retryCount);
-                    setTimeout(attemptConnection, delay);
-                } else {
-                    console.log('已完成房间搜索，您可能是第一个加入的用户');
-                    
-                    // 创建一个发现点，以便后来者能找到这个房间
-                    becomeDiscoveryPoint(roomCode);
-                }
-            });
-        }
-        
-        // 开始发现过程
-        attemptConnection();
-    }
-    
-    // 成为一个发现点，使后来的用户能够发现该房间
-    function becomeDiscoveryPoint(roomCode) {
-        // 创建一个专用的发现连接点
-        const discoveryId = `room-${roomCode}-discoveryProbe-0`;
-        
-        try {
-            // 如果可能，创建一个次要Peer作为发现点
-            // 实际应用中，你可能需要使用一个持久的信令服务器或数据库
-            const discoveryPeer = new Peer(discoveryId, {
-                debug: 1
-            });
-            
-            discoveryPeer.on('open', function(id) {
-                console.log(`已创建房间 ${roomCode} 的发现点: ${id}`);
-                
-                // 将这个发现点的Peer ID保存在本地存储中
-                try {
-                    const roomData = JSON.parse(localStorage.getItem('roomPeers') || '{}');
-                    roomData[roomCode] = roomData[roomCode] || [];
-                    roomData[roomCode].push(peer.id);
-                    localStorage.setItem('roomPeers', JSON.stringify(roomData));
-                } catch (e) {
-                    console.error('无法保存房间数据到本地存储:', e);
-                }
-                
-                // 监听连接请求
-                discoveryPeer.on('connection', function(conn) {
-                    console.log('收到房间发现请求:', conn.metadata);
-                    
-                    conn.on('open', function() {
-                        console.log('发现连接已打开，准备发送房间成员列表');
-                        
-                        // 监听发现请求
-                        conn.on('data', function(data) {
-                            if (data.type === 'discovery' && data.action === 'requestPeers') {
-                                // 从本地存储中获取房间内的对等点列表
-                                try {
-                                    const roomData = JSON.parse(localStorage.getItem('roomPeers') || '{}');
-                                    const peersList = roomData[roomCode] || [];
-                                    
-                                    // 发送房间内的对等点列表
-                                    conn.send({
-                                        type: 'discovery',
-                                        roomId: roomCode,
-                                        action: 'peersList',
-                                        peers: peersList,
-                                        timestamp: new Date().toISOString()
-                                    });
-                                } catch (e) {
-                                    console.error('无法从本地存储获取房间数据:', e);
-                                    conn.send({
-                                        type: 'discovery',
-                                        roomId: roomCode,
-                                        action: 'peersList',
-                                        peers: [peer.id], // 至少包含自己
-                                        timestamp: new Date().toISOString()
-                                    });
+            discoveryConn.on('data', function(data) {
+                // 接收来自发现频道的数据
+                if (data.type === 'discovery') {
+                    if (data.action === 'members') {
+                        console.log('收到房间成员列表:', data.members);
+                        // 连接到所有房间成员
+                        if (Array.isArray(data.members)) {
+                            data.members.forEach(member => {
+                                if (member.peerId !== peer.id) {
+                                    connectToPeer(member.peerId);
                                 }
-                            }
-                        });
-                    });
-                });
+                            });
+                        }
+                    }
+                }
             });
             
-            discoveryPeer.on('error', function(err) {
-                console.error('创建发现点时发生错误:', err);
-                // 如果无法创建发现点，我们可以尝试其他方法
-                // 例如，将自己的ID存储在localStorage中，以便同一浏览器的其他标签可以发现我们
-                try {
-                    const roomData = JSON.parse(localStorage.getItem('roomPeers') || '{}');
-                    roomData[roomCode] = roomData[roomCode] || [];
-                    roomData[roomCode].push(peer.id);
-                    localStorage.setItem('roomPeers', JSON.stringify(roomData));
-                } catch (e) {
-                    console.error('无法保存房间数据到本地存储:', e);
-                }
+            discoveryConn.on('error', function(err) {
+                console.log('连接到发现频道失败，可能是第一个加入房间的用户');
+                // 如果无法连接到发现频道，尝试自己创建一个
+                becomeDiscoveryPoint(roomCode);
             });
         } catch (error) {
-            console.error('创建发现点失败:', error);
+            console.error('尝试连接到发现频道时出错:', error);
+            // 如果出错，尝试自己成为发现点
+            becomeDiscoveryPoint(roomCode);
         }
     }
     
-    // 处理新连接
+    // 修改发现点函数
+    function becomeDiscoveryPoint(roomCode) {
+        console.log(`尝试成为房间 ${roomCode} 的发现节点`);
+        
+        // 当前会话中的成员列表
+        const roomMembers = [
+            {
+                peerId: peer.id,
+                userName: userName,
+                joinTime: new Date().toISOString()
+            }
+        ];
+        
+        // 创建一个全局变量来跟踪我们是否是房间的发现点
+        window.isDiscoveryPoint = true;
+        
+        // 监听新的连接请求
+        peer.on('connection', function(conn) {
+            // 这个事件处理程序会处理所有新连接，所以我们需要检查它是否是发现请求
+            if (conn.metadata && conn.metadata.type === 'discovery') {
+                console.log('收到来自的发现请求:', conn.metadata);
+                
+                conn.on('open', function() {
+                    // 监听发现数据
+                    conn.on('data', function(data) {
+                        if (data.type === 'discovery') {
+                            if (data.action === 'join' && data.roomId === roomCode) {
+                                // 新用户加入
+                                console.log('新用户加入房间:', data.userName, data.peerId);
+                                
+                                // 添加到房间成员列表
+                                if (!roomMembers.find(m => m.peerId === data.peerId)) {
+                                    roomMembers.push({
+                                        peerId: data.peerId,
+                                        userName: data.userName,
+                                        joinTime: data.timestamp
+                                    });
+                                }
+                                
+                                // 给新成员发送完整成员列表
+                                conn.send({
+                                    type: 'discovery',
+                                    action: 'members',
+                                    roomId: roomCode,
+                                    members: roomMembers,
+                                    timestamp: new Date().toISOString()
+                                });
+                                
+                                // 自己连接到这个新成员
+                                connectToPeer(data.peerId);
+                                
+                                // 通知其他现有成员有新用户加入
+                                for (let id in connections) {
+                                    if (id !== data.peerId && connections[id] && connections[id].open) {
+                                        try {
+                                            connections[id].send({
+                                                type: 'discovery',
+                                                action: 'newMember',
+                                                roomId: roomCode,
+                                                member: {
+                                                    peerId: data.peerId,
+                                                    userName: data.userName,
+                                                    joinTime: data.timestamp
+                                                },
+                                                timestamp: new Date().toISOString()
+                                            });
+                                        } catch (e) {
+                                            console.error('通知现有成员失败:', e);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                // 当连接关闭时，从成员列表中移除
+                conn.on('close', function() {
+                    const index = roomMembers.findIndex(m => m.peerId === conn.peer);
+                    if (index !== -1) {
+                        console.log(`用户 ${roomMembers[index].userName} 已离开房间`);
+                        roomMembers.splice(index, 1);
+                    }
+                });
+            }
+        });
+        
+        console.log('已成为房间发现节点，等待其他用户加入');
+    }
+    
+    // 修改处理连接的函数
     function handleNewConnection(conn) {
         console.log('收到新连接:', conn.metadata);
         
@@ -524,9 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 如果这是发现连接
             if (conn.metadata && conn.metadata.type === 'discovery') {
-                // 处理发现请求
-                handleDiscoveryConnection(conn);
-                return;
+                return; // 发现连接已在其他地方处理
             }
             
             // 发送欢迎消息
@@ -540,6 +547,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // 收到数据时
             conn.on('data', function(data) {
                 console.log('收到数据:', data);
+                
+                // 处理发现相关的消息
+                if (data.type === 'discovery') {
+                    if (data.action === 'newMember' && data.roomId === currentRoom) {
+                        // 有新用户加入房间，尝试连接
+                        connectToPeer(data.member.peerId);
+                        return;
+                    }
+                }
+                
+                // 处理常规消息
                 handleIncomingMessage(data, conn.peer);
             });
             
@@ -559,95 +577,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('连接错误:', err);
                 delete connections[conn.peer];
             });
-        });
-    }
-    
-    // 处理发现连接
-    function handleDiscoveryConnection(conn) {
-        conn.on('data', function(data) {
-            if (data.type === 'discovery') {
-                if (data.action === 'requestPeers') {
-                    // 发送当前已知的对等点列表
-                    const peersList = Object.keys(connections);
-                    
-                    // 确保自己的ID在列表中
-                    if (peer && peer.id && !peersList.includes(peer.id)) {
-                        peersList.push(peer.id);
-                    }
-                    
-                    conn.send({
-                        type: 'discovery',
-                        roomId: currentRoom,
-                        action: 'peersList',
-                        peers: peersList,
-                        timestamp: new Date().toISOString()
-                    });
-                } else if (data.action === 'peersList') {
-                    // 收到对等点列表，尝试连接到其中的每一个
-                    if (Array.isArray(data.peers)) {
-                        data.peers.forEach(peerId => {
-                            // 不要连接到自己
-                            if (peerId !== peer.id && !connections[peerId]) {
-                                connectToPeer(peerId);
-                            }
-                        });
-                    }
-                }
-            }
-        });
-    }
-    
-    // 连接到特定的对等点
-    function connectToPeer(peerId) {
-        if (!peer || peer.destroyed || connections[peerId]) return;
-        
-        console.log('连接到对等点:', peerId);
-        
-        const conn = peer.connect(peerId, {
-            reliable: true,
-            metadata: {
-                type: 'chat',
-                roomId: currentRoom,
-                userName: userName,
-                timestamp: new Date().toISOString()
-            }
-        });
-        
-        // 保存连接
-        connections[peerId] = conn;
-        
-        conn.on('open', function() {
-            console.log('已连接到对等点:', peerId);
-            
-            // 发送加入消息
-            conn.send({
-                type: 'join',
-                roomId: currentRoom,
-                userName: userName,
-                timestamp: new Date().toISOString()
-            });
-            
-            // 收到数据时
-            conn.on('data', function(data) {
-                handleIncomingMessage(data, conn.peer);
-            });
-            
-            // 连接关闭时
-            conn.on('close', function() {
-                console.log('连接已关闭:', peerId);
-                delete connections[peerId];
-            });
-            
-            // 连接出错时
-            conn.on('error', function(err) {
-                console.error('连接错误:', err);
-                delete connections[peerId];
-            });
-        });
-        
-        conn.on('error', function(err) {
-            console.error('连接错误:', err);
-            delete connections[peerId];
         });
     }
     
@@ -1026,6 +955,60 @@ document.addEventListener('DOMContentLoaded', function() {
             script.onload = () => resolve(window.Peer);
             script.onerror = () => reject(new Error('无法加载PeerJS库'));
             document.head.appendChild(script);
+        });
+    }
+    
+    // 连接到特定的对等点
+    function connectToPeer(peerId) {
+        if (!peer || peer.destroyed || connections[peerId]) return;
+        
+        console.log('连接到对等点:', peerId);
+        
+        const conn = peer.connect(peerId, {
+            reliable: true,
+            metadata: {
+                type: 'chat',
+                roomId: currentRoom,
+                userName: userName,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+        // 保存连接
+        connections[peerId] = conn;
+        
+        conn.on('open', function() {
+            console.log('已连接到对等点:', peerId);
+            
+            // 发送加入消息
+            conn.send({
+                type: 'join',
+                roomId: currentRoom,
+                userName: userName,
+                timestamp: new Date().toISOString()
+            });
+            
+            // 收到数据时
+            conn.on('data', function(data) {
+                handleIncomingMessage(data, conn.peer);
+            });
+            
+            // 连接关闭时
+            conn.on('close', function() {
+                console.log('连接已关闭:', peerId);
+                delete connections[peerId];
+            });
+            
+            // 连接出错时
+            conn.on('error', function(err) {
+                console.error('连接错误:', err);
+                delete connections[peerId];
+            });
+        });
+        
+        conn.on('error', function(err) {
+            console.error('连接错误:', err);
+            delete connections[peerId];
         });
     }
 }); 
