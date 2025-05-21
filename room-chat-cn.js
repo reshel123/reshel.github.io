@@ -75,15 +75,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
         
-        if (!window.AV.Realtime) {
+        if (!window.Realtime) {
             addSystemMessage('LeanCloud Realtime SDK未加载，请刷新页面重试');
             updateConnectionStatus('offline', 'Realtime未加载');
             return false;
         }
         
-        if (!window.AV.TypedMessagesPlugin) {
-            addSystemMessage('LeanCloud 消息插件未加载，请刷新页面重试');
-            updateConnectionStatus('offline', '插件未加载');
+        if (!window.TextMessage || !window.FileMessage) {
+            addSystemMessage('LeanCloud 消息类型未定义，请刷新页面重试');
+            updateConnectionStatus('offline', '消息插件未加载');
             return false;
         }
         
@@ -341,11 +341,10 @@ document.addEventListener('DOMContentLoaded', function() {
             updateConnectionStatus('connecting', '正在连接');
             
             // 创建Realtime客户端
-            client = new AV.Realtime({
+            client = new Realtime({
                 appId: lcConfig.appId,
                 appKey: lcConfig.appKey,
-                server: lcConfig.serverURLs,
-                plugins: [AV.TypedMessagesPlugin]
+                server: lcConfig.serverURLs
             });
             
             // 创建一个唯一ID
@@ -427,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addSystemMessage(`${userName} 已加入房间`);
             
             // 发送系统消息通知其他用户
-            await conversation.send(new AV.TextMessage(`${userName} 已加入房间`));
+            await conversation.send(new TextMessage(`${userName} 已加入房间`));
             
             // 监听消息
             conversation.on('message', (message) => {
@@ -447,12 +446,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 处理收到的消息
     function handleIncomingMessage(message) {
         try {
-            if (message instanceof AV.TextMessage) {
+            if (message instanceof TextMessage) {
                 // 文本消息
                 const senderName = message.getAttributes().fromName || '用户';
                 addMessage('other', senderName, message.text, new Date(message.timestamp));
                 playSound('receiveSound');
-            } else if (message instanceof AV.FileMessage) {
+            } else if (message instanceof FileMessage) {
                 // 文件消息
                 const senderName = message.getAttributes().fromName || '用户';
                 const fileInfo = {
@@ -504,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
             playSound('sendSound');
             
             // 创建文本消息
-            const textMessage = new AV.TextMessage(message);
+            const textMessage = new TextMessage(message);
             textMessage.setAttributes({
                 fromName: userName
             });
@@ -584,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
         filePreviewContainer.appendChild(preview);
         
         // 更改文件按钮文本
-        fileButton.textContent = '发送文件';
+        fileButton.textContent = '发送此文件';
     }
     
     // 发送文件
@@ -602,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await lcFile.save();
             
             // 创建文件消息
-            const fileMessage = new AV.FileMessage(lcFile);
+            const fileMessage = new FileMessage(lcFile);
             fileMessage.setAttributes({
                 fromName: userName,
                 fileName: file.name,
@@ -624,9 +623,9 @@ document.addEventListener('DOMContentLoaded', function() {
             filePreviewContainer.innerHTML = '';
             fileInput.value = '';
             selectedFile = null;
-            fileButton.textContent = '发送文件';
+            fileButton.textContent = '选择文件';
         } catch (error) {
-            addSystemMessage('文件上传失败，请重试');
+            addSystemMessage('文件上传失败: ' + error.message);
             playSound('errorSound');
         }
     }
