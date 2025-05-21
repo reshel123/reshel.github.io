@@ -67,6 +67,29 @@ document.addEventListener('DOMContentLoaded', function() {
         statusEl.querySelector('.status-text').textContent = message;
     }
     
+    // 检查SDK是否完全加载
+    function checkSDKLoaded() {
+        if (!window.AV) {
+            addSystemMessage('LeanCloud SDK未加载，请刷新页面重试');
+            updateConnectionStatus('offline', 'SDK未加载');
+            return false;
+        }
+        
+        if (!window.AV.Realtime) {
+            addSystemMessage('LeanCloud Realtime SDK未加载，请刷新页面重试');
+            updateConnectionStatus('offline', 'Realtime未加载');
+            return false;
+        }
+        
+        if (!window.AV.TypedMessagesPlugin) {
+            addSystemMessage('LeanCloud 消息插件未加载，请刷新页面重试');
+            updateConnectionStatus('offline', '插件未加载');
+            return false;
+        }
+        
+        return true;
+    }
+    
     // 房间状态
     let currentRoom = null;
     let userName = null;
@@ -81,11 +104,34 @@ document.addEventListener('DOMContentLoaded', function() {
         serverURLs: 'https://znrmmch0.lc-cn-n1-shared.com'
     };
     
+    // 系统消息功能提前定义，以便在初始化时可以显示错误
+    function addSystemMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message system-message';
+        messageDiv.textContent = text;
+        
+        chatContainer.appendChild(messageDiv);
+        if (chatContainer.scrollTo) {
+            chatContainer.scrollTo(0, chatContainer.scrollHeight);
+        } else {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+    
+    // 检查SDK加载
+    if (!checkSDKLoaded()) {
+        return;
+    }
+    
     // 初始化LeanCloud
     try {
-        AV.init(lcConfig);
+        // 确保SDK已经加载且没有初始化过
+        if (!AV._config) {
+            AV.init(lcConfig);
+        }
     } catch (e) {
-        addSystemMessage('消息服务初始化失败，请检查网络连接');
+        addSystemMessage('消息服务初始化失败: ' + e.message);
+        updateConnectionStatus('offline', '初始化失败');
     }
     
     // 添加音效功能
@@ -614,16 +660,6 @@ document.addEventListener('DOMContentLoaded', function() {
         scrollToBottom();
     }
     
-    // 添加系统消息
-    function addSystemMessage(text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message system-message';
-        messageDiv.textContent = text;
-        
-        chatContainer.appendChild(messageDiv);
-        scrollToBottom();
-    }
-    
     // 添加文件消息
     function addFileMessage(sender, name, file, time, fileUrl) {
         const messageDiv = document.createElement('div');
@@ -693,7 +729,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 自动滚动到底部
     function scrollToBottom() {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        if (chatContainer.scrollTo) {
+            chatContainer.scrollTo(0, chatContainer.scrollHeight);
+        } else {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
     }
     
     // 格式化时间

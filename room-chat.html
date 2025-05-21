@@ -477,9 +477,19 @@
         </div>
     </div>
     
-    <!-- LeanCloud SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.12.2/dist/av-min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0-rc.5/dist/realtime.browser.min.js"></script>
+    <!-- LeanCloud SDK (国内版) -->
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js"></script>
+    <script>
+        // 确保AV已经加载
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!window.AV) {
+                alert('LeanCloud SDK加载失败，请刷新页面重试');
+                return;
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js"></script>
     
     <script src="room-chat-cn.js"></script>
 </body>
