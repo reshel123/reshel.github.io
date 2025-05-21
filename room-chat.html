@@ -443,6 +443,14 @@
                     <p>欢迎使用聊天室功能！请点击"进入房间"按钮开始私密聊天。</p>
                     <p>同一房间码的用户可以互相发送消息和文件。</p>
                     <p><strong>测试方法</strong>：打开两个浏览器窗口，使用相同的房间码加入，即可在两个窗口间互相发送消息。</p>
+                    <p><strong>网络提示</strong>：如果遇到连接问题，请尝试以下方法：</p>
+                    <ol>
+                        <li>检查网络连接是否稳定</li>
+                        <li>尝试使用4G/5G移动网络</li>
+                        <li>关闭并重新打开浏览器</li>
+                        <li>清除浏览器缓存后重试</li>
+                        <li>等待30秒让系统自动重连</li>
+                    </ol>
                 </div>
                 <!-- 聊天消息将在这里动态添加 -->
             </div>
@@ -457,7 +465,7 @@
                     <button id="fileButton" disabled>发送文件</button>
                     <button id="sendButton" disabled>发送</button>
                 </div>
-                <button id="joinRoomButton" onclick="document.getElementById('roomModal').classList.remove('hidden');document.getElementById('roomCode').focus();">加入聊天</button>
+                <button id="joinRoomButton" disabled onclick="document.getElementById('roomModal').classList.remove('hidden');document.getElementById('roomCode').focus();">加入聊天</button>
             </div>
         </main>
         
@@ -478,26 +486,113 @@
         </div>
     </div>
     
-    <!-- LeanCloud SDK (国内版) -->
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js"></script>
-    
+    <!-- LeanCloud SDK (国内版) - 使用多个备用CDN -->
     <script>
-        // 设置消息类型
-        document.addEventListener('DOMContentLoaded', function() {
+        // 动态加载SDK脚本
+        function loadScript(url, callback) {
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = url;
+            script.onerror = function() {
+                console.error('加载失败:', url);
+                if (callback) callback(false);
+            };
+            script.onload = function() {
+                console.log('加载成功:', url);
+                if (callback) callback(true);
+            };
+            document.head.appendChild(script);
+        }
+
+        // CDN列表
+        const cdnList = {
+            av: [
+                'https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js',
+                'https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/leancloud-storage/4.15.0/av.min.js',
+                'https://unpkg.zhimg.com/leancloud-storage@4.15.0/dist/av.min.js'
+            ],
+            realtime: [
+                'https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js',
+                'https://unpkg.zhimg.com/leancloud-realtime@5.0.0/dist/realtime.browser.min.js',
+                'https://fastly.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js'
+            ],
+            typedMessages: [
+                'https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js',
+                'https://unpkg.zhimg.com/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js',
+                'https://fastly.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js'
+            ]
+        };
+
+        // 尝试从CDN列表加载
+        function loadFromCDNList(cdnType, index, onComplete) {
+            if (index >= cdnList[cdnType].length) {
+                console.error(`所有${cdnType}的CDN都失败了`);
+                if (onComplete) onComplete(false);
+                return;
+            }
+
+            loadScript(cdnList[cdnType][index], function(success) {
+                if (success) {
+                    if (onComplete) onComplete(true);
+                } else {
+                    // 尝试下一个CDN
+                    loadFromCDNList(cdnType, index + 1, onComplete);
+                }
+            });
+        }
+
+        // 按顺序加载SDK
+        function loadSDKs() {
+            loadFromCDNList('av', 0, function(success) {
+                if (success) {
+                    loadFromCDNList('realtime', 0, function(success) {
+                        if (success) {
+                            loadFromCDNList('typedMessages', 0, function(success) {
+                                if (success) {
+                                    console.log('所有SDK加载成功');
+                                    initializeSDK();
+                                } else {
+                                    showSDKError('消息类型插件');
+                                }
+                            });
+                        } else {
+                            showSDKError('实时通信SDK');
+                        }
+                    });
+                } else {
+                    showSDKError('存储SDK');
+                }
+            });
+        }
+
+        // 显示SDK错误
+        function showSDKError(sdkName) {
+            const errorMsg = `${sdkName}加载失败，请刷新页面重试。如果问题持续存在，请尝试使用其他网络环境。`;
+            alert(errorMsg);
+        }
+
+        // 初始化SDK
+        function initializeSDK() {
             // 确保SDK加载完成
             if (!window.AV || !window.Realtime) {
-                alert('LeanCloud SDK加载失败，请刷新页面重试');
+                showSDKError('LeanCloud');
                 return;
             }
             
             // 全局定义消息类型
             window.TextMessage = window.AV.Realtime.TextMessage;
             window.FileMessage = window.AV.Realtime.FileMessage;
-        });
+            
+            // 加载主脚本
+            loadScript('room-chat-cn.js', function(success) {
+                if (!success) {
+                    alert('聊天功能脚本加载失败，请刷新页面重试');
+                }
+            });
+        }
+
+        // 开始加载
+        loadSDKs();
     </script>
-    
-    <script src="room-chat-cn.js"></script>
 </body>
 </html> 

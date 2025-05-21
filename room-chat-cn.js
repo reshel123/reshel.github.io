@@ -70,19 +70,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // 检查SDK是否完全加载
     function checkSDKLoaded() {
         if (!window.AV) {
-            addSystemMessage('LeanCloud SDK未加载，请刷新页面重试');
+            addSystemMessage('LeanCloud SDK未加载，正在尝试重新加载...');
             updateConnectionStatus('offline', 'SDK未加载');
             return false;
         }
         
         if (!window.Realtime) {
-            addSystemMessage('LeanCloud Realtime SDK未加载，请刷新页面重试');
+            addSystemMessage('LeanCloud Realtime SDK未加载，正在尝试重新加载...');
             updateConnectionStatus('offline', 'Realtime未加载');
             return false;
         }
         
         if (!window.TextMessage || !window.FileMessage) {
-            addSystemMessage('LeanCloud 消息类型未定义，请刷新页面重试');
+            addSystemMessage('LeanCloud 消息类型未定义，正在尝试重新加载...');
             updateConnectionStatus('offline', '消息插件未加载');
             return false;
         }
@@ -118,21 +118,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 检查SDK加载
-    if (!checkSDKLoaded()) {
-        return;
+    // 尝试初始化SDK，添加重试机制
+    function initSDK() {
+        // 检查SDK加载
+        if (!checkSDKLoaded()) {
+            addSystemMessage('SDK未正确加载，请等待自动重试或刷新页面');
+            
+            // 5秒后重试
+            setTimeout(function() {
+                addSystemMessage('正在重试初始化SDK...');
+                initSDK();
+            }, 5000);
+            return;
+        }
+        
+        // 初始化LeanCloud
+        try {
+            // 确保SDK已经加载且没有初始化过
+            if (!AV._config) {
+                AV.init(lcConfig);
+                addSystemMessage('聊天服务初始化成功，可以开始聊天了');
+                updateConnectionStatus('offline', '已就绪');
+            }
+            
+            // 启用UI
+            joinRoomButton.disabled = false;
+            joinRoomButton.textContent = '加入聊天';
+            
+        } catch (e) {
+            addSystemMessage('消息服务初始化失败: ' + e.message);
+            updateConnectionStatus('offline', '初始化失败');
+            
+            // 重试初始化
+            setTimeout(function() {
+                addSystemMessage('正在重试初始化SDK...');
+                initSDK();
+            }, 5000);
+        }
     }
     
-    // 初始化LeanCloud
-    try {
-        // 确保SDK已经加载且没有初始化过
-        if (!AV._config) {
-            AV.init(lcConfig);
-        }
-    } catch (e) {
-        addSystemMessage('消息服务初始化失败: ' + e.message);
-        updateConnectionStatus('offline', '初始化失败');
-    }
+    // 显示欢迎消息
+    addSystemMessage('正在初始化聊天服务...');
+    updateConnectionStatus('connecting', '正在加载');
+    
+    // 初始化SDK
+    initSDK();
     
     // 添加音效功能
     function playSound(type) {
@@ -345,14 +375,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 appId: lcConfig.appId,
                 appKey: lcConfig.appKey,
                 server: lcConfig.serverURLs,
-                plugins: [AV.TypedMessagesPlugin] // 注册消息类型插件
+                plugins: [AV.TypedMessagesPlugin], // 注册消息类型插件
+                // 添加更多配置以提高稳定性
+                RTMOptions: {
+                    // 启用自动重连
+                    autoReconnect: true,
+                    // 最大重连次数
+                    autoReconnectMaxTimes: 5,
+                    // 重连间隔
+                    autoReconnectInitialDelay: 1000,
+                    // 长连接超时设置
+                    keepaliveTimeout: 30000
+                }
             });
             
             // 创建一个唯一ID
             const clientId = `user_${roomCode}_${Date.now().toString(36)}`;
             
             // 连接到Realtime服务
-            const currentClient = await client.createIMClient(clientId);
+            let currentClient;
+            try {
+                currentClient = await client.createIMClient(clientId);
+            } catch (error) {
+                // 连接失败尝试重试
+                addSystemMessage('连接服务器失败，正在重试...');
+                
+                // 等待2秒后重试
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // 重新尝试连接
+                currentClient = await client.createIMClient(clientId);
+            }
             
             // 获取或创建对话
             const conversationId = `room_${roomCode}`;
@@ -366,81 +419,120 @@ document.addEventListener('DOMContentLoaded', function() {
                 existingConversation = conversations[0];
             } catch (e) {
                 // 查询失败，将创建新对话
+                addSystemMessage('查询对话失败，将创建新对话');
             }
             
-            if (existingConversation) {
-                // 加入现有对话
-                conversation = existingConversation;
-                await conversation.join();
-            } else {
-                // 创建新对话
-                conversation = await currentClient.createConversation({
-                    name: conversationId,
-                    transient: false, // 非暂态对话，会保存消息记录
-                    unique: true,
-                    members: [clientId]
-                });
-            }
-            
-            // 设置用户名属性
-            conversation.setAttribute('myName', userName);
-            
-            // 设置成功连接状态
-            updateConnectionStatus('online', '已连接');
-            roomInfo.textContent = `房间: ${roomCode} | 用户: ${userName}`;
-            addSystemMessage(`已成功连接到聊天服务器`);
-            enableChatInput();
-            joinRoomButton.classList.add('hidden');
-            
-            // 监听用户加入
-            conversation.on('membersjoined', function(payload) {
-                payload.members.forEach(memberId => {
-                    // 获取用户名
-                    const member = conversation.members.find(m => m.id === memberId);
-                    const memberName = member ? member.getAttribute('myName') || '用户' : '用户';
-                    
-                    if (member && member.id !== clientId) {
-                        addSystemMessage(`${memberName} 已加入房间`);
-                        playSound('joinSound');
-                    }
-                });
-                
-                updateOnlineUsersCount();
-            });
-            
-            // 监听用户离开
-            conversation.on('membersleft', function(payload) {
-                payload.members.forEach(memberId => {
-                    // 获取用户名
-                    const member = conversation.members.find(m => m.id === memberId);
-                    const memberName = member ? member.getAttribute('myName') || '用户' : '用户';
-                    
-                    if (member && member.id !== clientId) {
-                        addSystemMessage(`${memberName} 已离开房间`);
-                    }
-                });
-                
-                updateOnlineUsersCount();
-            });
-            
-            // 显示自己的加入消息
-            addSystemMessage(`${userName} 已加入房间`);
-            
-            // 发送系统消息通知其他用户
-            await conversation.send(new TextMessage(`${userName} 已加入房间`));
-            
-            // 监听消息
-            conversation.on('message', (message) => {
-                if (message.from !== clientId) {
-                    handleIncomingMessage(message);
+            try {
+                if (existingConversation) {
+                    // 加入现有对话
+                    conversation = existingConversation;
+                    await conversation.join();
+                } else {
+                    // 创建新对话
+                    conversation = await currentClient.createConversation({
+                        name: conversationId,
+                        transient: false, // 非暂态对话，会保存消息记录
+                        unique: true,
+                        members: [clientId]
+                    });
                 }
-            });
-            
-            updateOnlineUsersCount();
+                
+                // 设置用户名属性
+                conversation.setAttribute('myName', userName);
+                
+                // 设置成功连接状态
+                updateConnectionStatus('online', '已连接');
+                roomInfo.textContent = `房间: ${roomCode} | 用户: ${userName}`;
+                addSystemMessage(`已成功连接到聊天服务器`);
+                enableChatInput();
+                joinRoomButton.classList.add('hidden');
+                
+                // 监听连接状态
+                currentClient.on('disconnect', function() {
+                    addSystemMessage('与服务器连接已断开，正在重新连接...');
+                    updateConnectionStatus('connecting', '重新连接中');
+                });
+                
+                currentClient.on('reconnect', function() {
+                    addSystemMessage('已重新连接到服务器');
+                    updateConnectionStatus('online', '已连接');
+                });
+                
+                currentClient.on('reconnecterror', function() {
+                    addSystemMessage('重新连接失败，请检查网络连接');
+                    updateConnectionStatus('offline', '连接失败');
+                });
+                
+                // 监听用户加入
+                conversation.on('membersjoined', function(payload) {
+                    payload.members.forEach(memberId => {
+                        // 获取用户名
+                        const member = conversation.members.find(m => m.id === memberId);
+                        const memberName = member ? member.getAttribute('myName') || '用户' : '用户';
+                        
+                        if (member && member.id !== clientId) {
+                            addSystemMessage(`${memberName} 已加入房间`);
+                            playSound('joinSound');
+                        }
+                    });
+                    
+                    updateOnlineUsersCount();
+                });
+                
+                // 监听用户离开
+                conversation.on('membersleft', function(payload) {
+                    payload.members.forEach(memberId => {
+                        // 获取用户名
+                        const member = conversation.members.find(m => m.id === memberId);
+                        const memberName = member ? member.getAttribute('myName') || '用户' : '用户';
+                        
+                        if (member && member.id !== clientId) {
+                            addSystemMessage(`${memberName} 已离开房间`);
+                        }
+                    });
+                    
+                    updateOnlineUsersCount();
+                });
+                
+                // 显示自己的加入消息
+                addSystemMessage(`${userName} 已加入房间`);
+                
+                try {
+                    // 发送系统消息通知其他用户
+                    await conversation.send(new TextMessage(`${userName} 已加入房间`));
+                } catch (error) {
+                    console.error('发送系统消息失败:', error);
+                    // 继续处理，不阻止用户使用
+                }
+                
+                // 监听消息
+                conversation.on('message', (message) => {
+                    if (message.from !== clientId) {
+                        handleIncomingMessage(message);
+                    }
+                });
+                
+                updateOnlineUsersCount();
+            } catch (error) {
+                addSystemMessage('加入房间失败: ' + error.message);
+                updateConnectionStatus('offline', '加入失败');
+                
+                // 2秒后重试
+                setTimeout(() => {
+                    addSystemMessage('正在重新尝试加入房间...');
+                    connectToLeanCloud(roomCode, userName);
+                }, 2000);
+            }
         } catch (error) {
             addSystemMessage('无法连接到聊天服务器: ' + error.message);
             updateConnectionStatus('offline', '连接失败');
             playSound('errorSound');
+            
+            // 5秒后自动重试
+            setTimeout(() => {
+                addSystemMessage('正在重新尝试连接...');
+                connectToLeanCloud(roomCode, userName);
+            }, 5000);
         }
     }
     
