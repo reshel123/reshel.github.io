@@ -477,23 +477,8 @@
         </div>
     </div>
     
-    <!-- LeanCloud SDK (国内版) - 更换为可靠的CDN -->
-    <script src="https://lc-cn-n1-shared.oss-cn-hangzhou.aliyuncs.com/static/js/av-core-mini-0.6.4.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0-rc.1/dist/realtime.browser.min.js"></script>
-    <script>
-        // 设置消息类型
-        document.addEventListener('DOMContentLoaded', function() {
-            // 确保SDK加载完成
-            if (!window.AV || !window.Realtime) {
-                alert('LeanCloud SDK加载失败，请刷新页面重试');
-                return;
-            }
-            
-            // 全局定义消息类型
-            window.TextMessage = window.Realtime.TextMessage;
-            window.FileMessage = window.Realtime.FileMessage;
-        });
-    </script>
+    <!-- 使用本地LeanCloud SDK替代方案 -->
+    <script src="js/leancloud-chat.js"></script>
     
     <script src="room-chat-cn.js"></script>
 </body>

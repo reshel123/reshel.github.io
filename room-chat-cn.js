@@ -460,11 +460,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: message.getAttributes().fileType || 'application/octet-stream'
                 };
                 
-                addFileMessage('other', senderName, fileInfo, new Date(message.timestamp), message.getFile().url());
+                const fileUrl = typeof message.getFile().url === 'function' 
+                    ? message.getFile().url() 
+                    : message.getFile().url;
+                
+                addFileMessage('other', senderName, fileInfo, new Date(message.timestamp), fileUrl);
                 playSound('fileSound');
             }
         } catch (e) {
             // 处理消息失败
+            console.error('处理消息失败:', e);
         }
     }
     
@@ -616,7 +621,11 @@ document.addEventListener('DOMContentLoaded', function() {
             addSystemMessage(`文件 ${file.name} 上传完成`);
             
             // 显示在自己的界面上
-            addFileMessage('user', userName, file, new Date(), lcFile.url());
+            const fileUrl = typeof lcFile.url === 'function' 
+                ? lcFile.url() 
+                : lcFile.url;
+            
+            addFileMessage('user', userName, file, new Date(), fileUrl);
             
             // 清除文件选择
             filePreviewContainer.classList.add('hidden');
