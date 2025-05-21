@@ -427,9 +427,73 @@
         .hidden {
             display: none !important;
         }
+        
+        /* 加载窗口样式 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 32, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+        
+        .loading-container {
+            text-align: center;
+            color: #ffffff;
+            background: rgba(20, 20, 60, 0.8);
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.3);
+            border: 1px solid rgba(100, 100, 255, 0.2);
+            max-width: 80%;
+        }
+        
+        .loading-spinner {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4285f4;
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #d0e6ff;
+            text-shadow: 0 0 10px rgba(0, 100, 255, 0.5);
+        }
+        
+        .loading-status {
+            font-size: 0.9em;
+            color: #a0c4ff;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
+    <!-- 加载窗口 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在加载聊天服务...</div>
+            <div class="loading-status">加载SDK中...</div>
+        </div>
+    </div>
+
     <div class="container">
         <header class="chat-header">
             <button id="backButton" onclick="window.location.href='index.html'">返回主页</button>
@@ -486,65 +550,160 @@
         </div>
     </div>
     
-    <!-- LeanCloud SDK (国内版) - 使用多个备用CDN -->
+    <!-- LeanCloud SDK (国内版) - 直接引入方式 -->
     <script>
+        // 更新加载状态
+        function updateLoadingStatus(status) {
+            document.querySelector('.loading-status').textContent = status;
+        }
+
+        // 隐藏加载窗口
+        function hideLoadingOverlay() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+        
         // 动态加载SDK脚本
         function loadScript(url, callback) {
+            updateLoadingStatus(`正在加载: ${url.split('/').pop()}`);
+            console.log('开始加载脚本:', url);
             var script = document.createElement('script');
             script.type = 'text/javascript';
             script.src = url;
-            script.onerror = function() {
-                console.error('加载失败:', url);
+            script.onerror = function(error) {
+                console.error('加载失败:', url, error);
+                updateLoadingStatus(`加载失败: ${url.split('/').pop()}，请检查网络连接`);
                 if (callback) callback(false);
             };
             script.onload = function() {
                 console.log('加载成功:', url);
+                updateLoadingStatus(`加载成功: ${url.split('/').pop()}`);
                 if (callback) callback(true);
             };
             document.head.appendChild(script);
         }
 
-        // 直接加载SDK，不使用备用实现
-        loadScript('https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js', function(success) {
-            if (success) {
-                loadScript('https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js', function(success) {
-                    if (success) {
-                        loadScript('https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js', function(success) {
-                            if (success) {
-                                console.log('所有SDK加载成功');
-                                initializeSDK();
-                            } else {
-                                alert('消息类型插件加载失败，请刷新页面重试');
-                            }
-                        });
-                    } else {
-                        alert('实时通信SDK加载失败，请刷新页面重试');
-                    }
-                });
-            } else {
-                alert('存储SDK加载失败，请刷新页面重试');
+        // 国内可靠CDN地址
+        var scriptElements = [
+            { src: 'https://lc-s2-i9khkibj.cn-n1.lcfile.com/scripts/av-min.js' }, // 自建CDN
+            { src: 'https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/leancloud-realtime/5.0.0/realtime.browser.min.js' }, // 字节跳动CDN
+            { src: 'https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js' } // 字节跳动CDN
+        ];
+
+        function loadScriptSequentially(index) {
+            if (index >= scriptElements.length) {
+                console.log('所有SDK加载完成');
+                updateLoadingStatus('SDK加载完成，正在初始化...');
+                initializeSDK();
+                return;
             }
-        });
+
+            var script = document.createElement('script');
+            script.src = scriptElements[index].src;
+            script.onload = function() {
+                console.log(`${scriptElements[index].src} 加载成功`);
+                updateLoadingStatus(`SDK ${index+1}/${scriptElements.length} 加载成功`);
+                loadScriptSequentially(index + 1);
+            };
+            script.onerror = function(error) {
+                console.error(`${scriptElements[index].src} 加载失败`, error);
+                updateLoadingStatus(`SDK ${index+1}/${scriptElements.length} 加载失败，尝试备用源`);
+                
+                // 根据索引选择不同的备用源
+                var backupSrc = '';
+                switch(index) {
+                    case 0: // av.min.js 备用
+                        backupSrc = 'https://cdn.staticfile.org/leancloud-storage/4.15.0/av.min.js';
+                        break;
+                    case 1: // realtime 备用
+                        backupSrc = 'https://cdn.staticfile.org/leancloud-realtime/5.0.0/realtime.browser.min.js';
+                        break;
+                    case 2: // typed-messages 备用
+                        backupSrc = 'https://cdn.staticfile.org/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js';
+                        break;
+                }
+                
+                if (backupSrc) {
+                    updateLoadingStatus(`正在尝试备用源加载 SDK ${index+1}...`);
+                    var backupScript = document.createElement('script');
+                    backupScript.src = backupSrc;
+                    backupScript.onload = function() {
+                        console.log(`备用源加载成功: ${backupSrc}`);
+                        updateLoadingStatus(`SDK ${index+1} 备用源加载成功`);
+                        loadScriptSequentially(index + 1);
+                    };
+                    backupScript.onerror = function() {
+                        updateLoadingStatus(`SDK加载失败，请刷新页面重试或联系管理员`);
+                        console.error('所有源都加载失败');
+                        alert('无法加载聊天所需SDK，请检查您的网络连接后刷新页面');
+                    };
+                    document.head.appendChild(backupScript);
+                } else {
+                    updateLoadingStatus(`SDK加载失败，请刷新页面重试`);
+                    alert('无法加载聊天所需SDK，请检查您的网络连接后刷新页面');
+                }
+            };
+            document.head.appendChild(script);
+        }
+
+        // 开始加载SDK
+        loadScriptSequentially(0);
 
         // 初始化SDK
         function initializeSDK() {
-            if (!window.AV || !window.Realtime) {
-                alert('SDK加载失败，请刷新页面重试');
-                return;
-            }
-            
-            // 全局定义消息类型
-            window.TextMessage = window.AV.Realtime.TextMessage;
-            window.FileMessage = window.AV.Realtime.FileMessage;
-            
-            console.log('SDK初始化完成，加载主脚本');
-            
-            // 加载主脚本
-            loadScript('room-chat-cn.js', function(success) {
-                if (!success) {
-                    alert('聊天功能脚本加载失败，请刷新页面重试');
+            console.log('开始初始化SDK');
+            try {
+                if (!window.AV) {
+                    console.error('AV 对象不存在，SDK加载失败');
+                    updateLoadingStatus('SDK加载失败，AV对象不存在');
+                    alert('SDK加载失败，请刷新页面重试');
+                    return;
                 }
-            });
+                
+                console.log('AV对象存在:', window.AV);
+                
+                if (!window.Realtime) {
+                    console.error('Realtime 对象不存在，SDK加载失败');
+                    updateLoadingStatus('SDK加载失败，Realtime对象不存在');
+                    alert('SDK加载失败，请刷新页面重试');
+                    return;
+                }
+                
+                console.log('Realtime对象存在:', window.Realtime);
+                
+                // 全局定义消息类型
+                window.TextMessage = window.AV.Realtime.TextMessage;
+                window.FileMessage = window.AV.Realtime.FileMessage;
+                
+                if (!window.TextMessage || !window.FileMessage) {
+                    console.error('消息类型未定义，SDK加载可能不完整');
+                    console.log('TextMessage:', window.TextMessage);
+                    console.log('FileMessage:', window.FileMessage);
+                    updateLoadingStatus('SDK加载不完整，请刷新页面重试');
+                    alert('SDK加载不完整，请刷新页面重试');
+                    return;
+                }
+                
+                console.log('SDK初始化完成，加载主脚本');
+                updateLoadingStatus('正在加载聊天功能...');
+                
+                // 加载主脚本
+                loadScript('room-chat-cn.js', function(success) {
+                    if (!success) {
+                        updateLoadingStatus('聊天功能脚本加载失败，请刷新页面重试');
+                        alert('聊天功能脚本加载失败，请刷新页面重试');
+                    } else {
+                        // 加载完成，2秒后隐藏加载窗口
+                        updateLoadingStatus('加载完成！');
+                        setTimeout(function() {
+                            hideLoadingOverlay();
+                        }, 1500);
+                    }
+                });
+            } catch (error) {
+                console.error('初始化SDK时发生错误:', error);
+                updateLoadingStatus('初始化SDK时发生错误: ' + error.message);
+                alert('初始化SDK时发生错误，请刷新页面重试');
+            }
         }
 
         // 全局函数，用于从任何地方调用加入房间

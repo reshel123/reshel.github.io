@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // 检查是否存在加载窗口的隐藏函数
+    if (typeof window.hideLoadingOverlay === 'function') {
+        // 由于页面可能在hideLoadingOverlay前加载完成，确保加载窗口正确隐藏
+        setTimeout(function() {
+            window.hideLoadingOverlay();
+        }, 2000);
+    }
+    
     // DOM元素
     const chatContainer = document.getElementById('chatContainer');
     const userInput = document.getElementById('userInput');
@@ -99,9 +107,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LeanCloud配置
     const lcConfig = {
-        appId: 'Llq1AHbsTOnHq2OVhqsl3uqE-gzGzoHsz', // 您的AppID
-        appKey: '9t1lVZPkdv1aFlp1pISURX4j',         // 您的AppKey
-        serverURLs: 'https://llq1ahbs.lc-cn-n1-shared.com' // 您的API服务器地址
+        appId: 'rGkLYcDc4ZlH34K4IOxKvoB7-gzGzoHsz', // 您的AppID
+        appKey: 'Iq7QBHZnrJ5hn9oPapjvbdeZ',         // 您的AppKey
+        serverURLs: 'https://rgklycdc.lc-cn-n1-shared.com' // 您的API服务器地址
     };
     
     // 系统消息功能提前定义，以便在初始化时可以显示错误
