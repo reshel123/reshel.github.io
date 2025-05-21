@@ -431,8 +431,8 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <button id="backButton">返回主页</button>
+        <header class="chat-header">
+            <button id="backButton" onclick="window.location.href='index.html'">返回主页</button>
             <h1>房间聊天</h1>
             <div id="roomInfo">未加入房间</div>
         </header>
@@ -456,7 +456,7 @@
                     <button id="fileButton" disabled>发送文件</button>
                     <button id="sendButton" disabled>发送</button>
                 </div>
-                <button id="joinRoomButton">加入聊天</button>
+                <button id="joinRoomButton" onclick="document.getElementById('roomModal').classList.remove('hidden');document.getElementById('roomCode').focus();">加入聊天</button>
             </div>
         </main>
         
@@ -477,6 +477,19 @@
         </div>
     </div>
     
+    <script nomodule>
+        console.log('页面开始加载');
+        window.addEventListener('load', function() {
+            console.log('页面完全加载完成');
+        });
+        
+        // 检查DOM元素是否存在
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM内容已加载');
+            console.log('返回按钮:', document.getElementById('backButton') ? '存在' : '不存在');
+            console.log('加入按钮:', document.getElementById('joinRoomButton') ? '存在' : '不存在');
+        });
+    </script>
     <script src="room-chat.js"></script>
 </body>
 </html> 

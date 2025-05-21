@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // 立即记录日志，确认脚本正在运行
+    console.log('房间聊天脚本已加载');
+    
     // DOM元素
     const chatContainer = document.getElementById('chatContainer');
     const userInput = document.getElementById('userInput');
@@ -14,6 +17,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomError = document.getElementById('roomError');
     const roomInfo = document.getElementById('roomInfo');
     const filePreviewContainer = document.getElementById('filePreviewContainer');
+    
+    // 验证DOM元素加载情况
+    console.log('DOM元素加载状态:');
+    console.log('返回按钮:', backButton ? '已找到' : '未找到');
+    console.log('加入房间按钮:', joinRoomButton ? '已找到' : '未找到');
     
     // 创建连接状态指示器
     const statusIndicator = document.createElement('div');
@@ -246,13 +254,18 @@ document.addEventListener('DOMContentLoaded', function() {
     buttons.forEach(button => {
         button.addEventListener('click', function(e) {
             addRippleEffect(this, e);
+            // 不阻止事件传播
         });
     });
     
-    // 返回主页
-    backButton.addEventListener('click', function() {
+    // 返回主页 - 修改事件处理以确保其运行
+    backButton.addEventListener('click', function(e) {
+        console.log('返回按钮被点击');
+        e.stopPropagation(); // 阻止事件冒泡
+        
         // 关闭所有连接
         disconnect();
+        
         // 重定向到主页
         window.location.href = 'index.html';
     });
@@ -274,8 +287,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 打开房间选择弹窗
-    joinRoomButton.addEventListener('click', function() {
+    // 打开房间选择弹窗 - 修改事件处理以确保其运行
+    joinRoomButton.addEventListener('click', function(e) {
+        console.log('加入房间按钮被点击');
+        e.stopPropagation(); // 阻止事件冒泡
+        
         roomModal.classList.remove('hidden');
         roomCodeInput.focus();
         roomError.style.display = 'none';
