@@ -71,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentRoom = null;
     let userName = null;
     let selectedFile = null;
-    let onlineUsers = {};
     let client = null;
     let conversation = null;
     
