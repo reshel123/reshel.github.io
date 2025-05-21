@@ -99,6 +99,36 @@
             margin: 0 0 15px 0;
         }
         
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .room-chat-button {
+            background: rgba(66, 133, 244, 0.7);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .room-chat-button:hover {
+            background: rgba(82, 149, 255, 0.8);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(82, 149, 255, 0.5);
+        }
+        
+        .room-chat-button:active {
+            transform: scale(0.98);
+        }
+        
         .model-selector {
             display: flex;
             align-items: center;
@@ -183,6 +213,33 @@
             word-break: break-word;
             font-style: italic;
             border-left: 3px solid #7070ff;
+        }
+        
+        /* 系统消息和警告样式 */
+        .system-message {
+            background: rgba(50, 50, 80, 0.7);
+            color: #ffffff;
+            align-self: center;
+            text-align: center;
+            border-radius: 10px;
+            margin: 10px auto;
+            padding: 8px 15px;
+            max-width: 85%;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            word-break: break-word;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .warning {
+            background: rgba(150, 50, 50, 0.7);
+            border-left: 3px solid #ff5050;
+            color: #ffdddd;
+            font-weight: bold;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .thinking-title {
@@ -352,7 +409,10 @@
 <body>
     <div class="container">
         <header>
-            <h1>DeepSeek AI 助手</h1>
+            <div class="header-content">
+                <h1>DeepSeek AI 助手</h1>
+                <button id="roomChatButton" class="room-chat-button">房间聊天</button>
+            </div>
             <div class="model-selector">
                 <label for="modelSelect">选择模型：</label>
                 <select id="modelSelect">
@@ -385,10 +445,18 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const sendButton = document.getElementById('sendButton');
+            const roomChatButton = document.getElementById('roomChatButton');
             
             // 给发送按钮添加波纹效果
             sendButton.addEventListener('click', function(e) {
                 addRippleEffect(this, e);
+            });
+            
+            // 给房间聊天按钮添加波纹效果和点击事件
+            roomChatButton.addEventListener('click', function(e) {
+                addRippleEffect(this, e);
+                // 跳转到房间聊天页面
+                window.location.href = 'room-chat.html';
             });
             
             // 通用的波纹效果函数
