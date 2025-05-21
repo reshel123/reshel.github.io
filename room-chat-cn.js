@@ -99,9 +99,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LeanCloud配置
     const lcConfig = {
-        appId: 'ZnRMmcH0mn3Fqb7A4iKuI9Xz-gzGzoHsz',
-        appKey: 'o8JQzOL8uLvl98vVA8F73NGr',
-        serverURLs: 'https://znrmmch0.lc-cn-n1-shared.com'
+        appId: 'Llq1AHbsTOnHq2OVhqsl3uqE-gzGzoHsz', // 您的AppID
+        appKey: '9t1lVZPkdv1aFlp1pISURX4j',         // 您的AppKey
+        serverURLs: 'https://llq1ahbs.lc-cn-n1-shared.com' // 您的API服务器地址
     };
     
     // 系统消息功能提前定义，以便在初始化时可以显示错误
@@ -341,17 +341,18 @@ document.addEventListener('DOMContentLoaded', function() {
             updateConnectionStatus('connecting', '正在连接');
             
             // 创建Realtime客户端
-            client = new Realtime({
+            client = new AV.Realtime({
                 appId: lcConfig.appId,
                 appKey: lcConfig.appKey,
-                server: lcConfig.serverURLs
+                server: lcConfig.serverURLs,
+                plugins: [AV.TypedMessagesPlugin] // 注册消息类型插件
             });
             
             // 创建一个唯一ID
             const clientId = `user_${roomCode}_${Date.now().toString(36)}`;
             
             // 连接到Realtime服务
-            await client.connect(clientId);
+            const currentClient = await client.createIMClient(clientId);
             
             // 获取或创建对话
             const conversationId = `room_${roomCode}`;
@@ -359,8 +360,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             try {
                 // 查询现有对话
-                const query = client.getQuery();
-                query.equalTo('objectId', conversationId);
+                const query = currentClient.getQuery();
+                query.equalTo('name', conversationId);
                 const conversations = await query.find();
                 existingConversation = conversations[0];
             } catch (e) {
@@ -369,19 +370,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (existingConversation) {
                 // 加入现有对话
-                conversation = await client.getConversation(existingConversation.id);
+                conversation = existingConversation;
                 await conversation.join();
             } else {
                 // 创建新对话
-                conversation = await client.createConversation({
-                    name: `聊天室 ${roomCode}`,
+                conversation = await currentClient.createConversation({
+                    name: conversationId,
+                    transient: false, // 非暂态对话，会保存消息记录
                     unique: true,
-                    objectId: conversationId,
-                    members: [clientId],
+                    members: [clientId]
                 });
             }
             
-            // 自定义用户名
+            // 设置用户名属性
             conversation.setAttribute('myName', userName);
             
             // 设置成功连接状态
@@ -460,9 +461,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: message.getAttributes().fileType || 'application/octet-stream'
                 };
                 
-                const fileUrl = typeof message.getFile().url === 'function' 
-                    ? message.getFile().url() 
-                    : message.getFile().url;
+                let fileUrl;
+                if (message.getFile && typeof message.getFile === 'function') {
+                    const file = message.getFile();
+                    fileUrl = typeof file.url === 'function' ? file.url() : file.url;
+                } else if (message.file && message.file.url) {
+                    fileUrl = message.file.url;
+                }
                 
                 addFileMessage('other', senderName, fileInfo, new Date(message.timestamp), fileUrl);
                 playSound('fileSound');
@@ -470,6 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             // 处理消息失败
             console.error('处理消息失败:', e);
+            addSystemMessage('收到消息但处理失败');
         }
     }
     
@@ -508,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
             playSound('sendSound');
             
             // 创建文本消息
-            const textMessage = new TextMessage(message);
+            const textMessage = new AV.TextMessage(message);
             textMessage.setAttributes({
                 fromName: userName
             });
@@ -606,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await lcFile.save();
             
             // 创建文件消息
-            const fileMessage = new FileMessage(lcFile);
+            const fileMessage = new AV.FileMessage(lcFile);
             fileMessage.setAttributes({
                 fromName: userName,
                 fileName: file.name,
@@ -621,9 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addSystemMessage(`文件 ${file.name} 上传完成`);
             
             // 显示在自己的界面上
-            const fileUrl = typeof lcFile.url === 'function' 
-                ? lcFile.url() 
-                : lcFile.url;
+            const fileUrl = lcFile.url();
             
             addFileMessage('user', userName, file, new Date(), fileUrl);
             

@@ -442,6 +442,7 @@
                 <div class="welcome-message">
                     <p>欢迎使用聊天室功能！请点击"进入房间"按钮开始私密聊天。</p>
                     <p>同一房间码的用户可以互相发送消息和文件。</p>
+                    <p><strong>测试方法</strong>：打开两个浏览器窗口，使用相同的房间码加入，即可在两个窗口间互相发送消息。</p>
                 </div>
                 <!-- 聊天消息将在这里动态添加 -->
             </div>
@@ -477,8 +478,25 @@
         </div>
     </div>
     
-    <!-- 使用本地LeanCloud SDK替代方案 -->
-    <script src="js/leancloud-chat.js"></script>
+    <!-- LeanCloud SDK (国内版) -->
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js"></script>
+    
+    <script>
+        // 设置消息类型
+        document.addEventListener('DOMContentLoaded', function() {
+            // 确保SDK加载完成
+            if (!window.AV || !window.Realtime) {
+                alert('LeanCloud SDK加载失败，请刷新页面重试');
+                return;
+            }
+            
+            // 全局定义消息类型
+            window.TextMessage = window.AV.Realtime.TextMessage;
+            window.FileMessage = window.AV.Realtime.FileMessage;
+        });
+    </script>
     
     <script src="room-chat-cn.js"></script>
 </body>
