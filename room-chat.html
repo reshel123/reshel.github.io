@@ -482,7 +482,7 @@
             <input type="text" id="roomCode" placeholder="房间码 (四位数字)" maxlength="4" />
             <input type="text" id="userName" placeholder="您的昵称" maxlength="20" />
             <div class="error-message" id="roomError">请输入有效的房间码和昵称</div>
-            <button id="confirmJoinButton">加入聊天</button>
+            <button id="confirmJoinButton" onclick="joinChatRoom()">加入聊天</button>
         </div>
     </div>
     
@@ -504,84 +504,40 @@
             document.head.appendChild(script);
         }
 
-        // CDN列表
-        const cdnList = {
-            av: [
-                'https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js',
-                'https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/leancloud-storage/4.15.0/av.min.js',
-                'https://unpkg.zhimg.com/leancloud-storage@4.15.0/dist/av.min.js'
-            ],
-            realtime: [
-                'https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js',
-                'https://unpkg.zhimg.com/leancloud-realtime@5.0.0/dist/realtime.browser.min.js',
-                'https://fastly.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js'
-            ],
-            typedMessages: [
-                'https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js',
-                'https://unpkg.zhimg.com/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js',
-                'https://fastly.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js'
-            ]
-        };
-
-        // 尝试从CDN列表加载
-        function loadFromCDNList(cdnType, index, onComplete) {
-            if (index >= cdnList[cdnType].length) {
-                console.error(`所有${cdnType}的CDN都失败了`);
-                if (onComplete) onComplete(false);
-                return;
+        // 直接加载SDK，不使用备用实现
+        loadScript('https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av.min.js', function(success) {
+            if (success) {
+                loadScript('https://cdn.jsdelivr.net/npm/leancloud-realtime@5.0.0/dist/realtime.browser.min.js', function(success) {
+                    if (success) {
+                        loadScript('https://cdn.jsdelivr.net/npm/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js', function(success) {
+                            if (success) {
+                                console.log('所有SDK加载成功');
+                                initializeSDK();
+                            } else {
+                                alert('消息类型插件加载失败，请刷新页面重试');
+                            }
+                        });
+                    } else {
+                        alert('实时通信SDK加载失败，请刷新页面重试');
+                    }
+                });
+            } else {
+                alert('存储SDK加载失败，请刷新页面重试');
             }
-
-            loadScript(cdnList[cdnType][index], function(success) {
-                if (success) {
-                    if (onComplete) onComplete(true);
-                } else {
-                    // 尝试下一个CDN
-                    loadFromCDNList(cdnType, index + 1, onComplete);
-                }
-            });
-        }
-
-        // 按顺序加载SDK
-        function loadSDKs() {
-            loadFromCDNList('av', 0, function(success) {
-                if (success) {
-                    loadFromCDNList('realtime', 0, function(success) {
-                        if (success) {
-                            loadFromCDNList('typedMessages', 0, function(success) {
-                                if (success) {
-                                    console.log('所有SDK加载成功');
-                                    initializeSDK();
-                                } else {
-                                    showSDKError('消息类型插件');
-                                }
-                            });
-                        } else {
-                            showSDKError('实时通信SDK');
-                        }
-                    });
-                } else {
-                    showSDKError('存储SDK');
-                }
-            });
-        }
-
-        // 显示SDK错误
-        function showSDKError(sdkName) {
-            const errorMsg = `${sdkName}加载失败，请刷新页面重试。如果问题持续存在，请尝试使用其他网络环境。`;
-            alert(errorMsg);
-        }
+        });
 
         // 初始化SDK
         function initializeSDK() {
-            // 确保SDK加载完成
             if (!window.AV || !window.Realtime) {
-                showSDKError('LeanCloud');
+                alert('SDK加载失败，请刷新页面重试');
                 return;
             }
             
             // 全局定义消息类型
             window.TextMessage = window.AV.Realtime.TextMessage;
             window.FileMessage = window.AV.Realtime.FileMessage;
+            
+            console.log('SDK初始化完成，加载主脚本');
             
             // 加载主脚本
             loadScript('room-chat-cn.js', function(success) {
@@ -591,8 +547,37 @@
             });
         }
 
-        // 开始加载
-        loadSDKs();
+        // 全局函数，用于从任何地方调用加入房间
+        function joinChatRoom() {
+            console.log('加入房间按钮被点击');
+            const roomCode = document.getElementById('roomCode').value.trim();
+            const userName = document.getElementById('userName').value.trim();
+            const roomError = document.getElementById('roomError');
+            
+            // 验证输入
+            if (!/^\d{4}$/.test(roomCode)) {
+                roomError.textContent = '房间码必须是4位数字';
+                roomError.style.display = 'block';
+                document.getElementById('roomCode').focus();
+                return;
+            }
+            
+            if (!userName || userName.length < 2) {
+                roomError.textContent = '昵称至少需要2个字符';
+                roomError.style.display = 'block';
+                document.getElementById('userName').focus();
+                return;
+            }
+            
+            // 触发自定义事件，通知room-chat-cn.js处理
+            const joinEvent = new CustomEvent('join-chat-room', { 
+                detail: { roomCode, userName } 
+            });
+            document.dispatchEvent(joinEvent);
+            
+            // 隐藏弹窗
+            document.getElementById('roomModal').classList.add('hidden');
+        }
     </script>
 </body>
 </html> 
