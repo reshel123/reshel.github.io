@@ -552,9 +552,9 @@
         }
         
         var scriptElements = [
-            { src: 'https://cdn.bootcdn.net/ajax/libs/leancloud-storage/4.15.0/av.min.js', localFallback: 'lib/av.min.js' }, 
-            { src: 'https://cdn.bootcdn.net/ajax/libs/leancloud-realtime/5.0.0/realtime.browser.min.js', localFallback: 'lib/realtime.browser.min.js' }, 
-            { src: 'https://cdn.bootcdn.net/ajax/libs/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js', localFallback: 'lib/typed-messages.min.js' }
+            { src: 'https://unpkg.com/leancloud-storage@4.15.0/dist/av.min.js' }, 
+            { src: 'https://unpkg.com/leancloud-realtime@5.0.0/dist/realtime.browser.min.js' }, 
+            { src: 'https://unpkg.com/leancloud-realtime-plugin-typed-messages@4.0.1/dist/typed-messages.min.js' }
         ];
 
         var allScripts = [
@@ -584,22 +584,43 @@
                 loadScriptSequentially(index + 1);
             };
             script.onerror = function(error) {
-                if (index < scriptElements.length && allScripts[index].localFallback) {
-                    updateLoadingStatus(`远程脚本加载失败，尝试本地版本: ${allScripts[index].localFallback}`);
+                // 如果是SDK加载失败，尝试备用CDN
+                if (index < scriptElements.length) {
+                    var backupSrc = '';
+                    // 选择备用CDN
+                    switch(index) {
+                        case 0: // av.min.js
+                            backupSrc = 'https://cdn.staticfile.org/leancloud-storage/4.15.0/av.min.js';
+                            break;
+                        case 1: // realtime.browser.min.js
+                            backupSrc = 'https://cdn.staticfile.org/leancloud-realtime/5.0.0/realtime.browser.min.js';
+                            break;
+                        case 2: // typed-messages.min.js
+                            backupSrc = 'https://cdn.staticfile.org/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js';
+                            break;
+                    }
                     
-                    var localScript = document.createElement('script');
-                    localScript.src = allScripts[index].localFallback;
-                    localScript.onload = function() {
-                        loadedScripts++;
-                        updateLoadingStatus(`脚本 ${loadedScripts}/${totalScripts} 本地加载成功`);
-                        loadScriptSequentially(index + 1);
-                    };
-                    localScript.onerror = function() {
-                        updateLoadingStatus(`脚本加载失败，应用将以离线模式运行`);
-                        loadScriptSequentially(index + 1);
-                    };
-                    document.head.appendChild(localScript);
-                } else if (index < allScripts.length - 1) {
+                    if (backupSrc) {
+                        updateLoadingStatus(`尝试备用CDN加载: ${backupSrc.split('/').pop()}`);
+                        var backupScript = document.createElement('script');
+                        backupScript.src = backupSrc;
+                        backupScript.onload = function() {
+                            loadedScripts++;
+                            updateLoadingStatus(`脚本 ${loadedScripts}/${totalScripts} 备用CDN加载成功`);
+                            loadScriptSequentially(index + 1);
+                        };
+                        backupScript.onerror = function() {
+                            updateLoadingStatus(`SDK脚本加载失败，请检查网络连接`);
+                            alert(`无法加载SDK: ${allScripts[index].src.split('/').pop()}，请检查网络连接后刷新页面`);
+                            loadScriptSequentially(index + 1); // 尝试继续加载后续脚本
+                        };
+                        document.head.appendChild(backupScript);
+                        return;
+                    }
+                }
+                
+                // 对于非SDK脚本或没有备用源的情况
+                if (index < allScripts.length - 1) {
                     updateLoadingStatus(`脚本加载失败，继续加载其他脚本`);
                     loadScriptSequentially(index + 1);
                 } else {
