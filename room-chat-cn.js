@@ -1,6 +1,6 @@
 // 房间聊天功能的主要实现
-let currentUser = null;
-let currentRoomId = null;
+let chatCurrentUser = null;
+let chatRoomId = null;
 let conversationInstance = null;
 let realtime = null;
 let client = null;
@@ -114,8 +114,8 @@ function joinRoom(roomCode, username) {
     console.log(`尝试加入房间: ${roomCode}, 用户名: ${username}`);
     
     // 存储当前用户信息
-    currentUser = username;
-    currentRoomId = roomCode;
+    chatCurrentUser = username;
+    chatRoomId = roomCode;
     
     // 更新UI
     roomInfo.textContent = `房间: ${roomCode} | 用户: ${username}`;
@@ -357,13 +357,13 @@ function receiveMessage(message) {
         }
         
         // 不处理自己发的消息（因为已经显示在UI上了）
-        if (message.from === currentUser) {
+        if (message.from === chatCurrentUser) {
             console.log('跳过自己发送的消息');
             return;
         }
         
         // 添加调试信息
-        console.log(`接收消息: 发送者=${message.from}, 当前用户=${currentUser}`);
+        console.log(`接收消息: 发送者=${message.from}, 当前用户=${chatCurrentUser}`);
         
         // 处理文本消息
         if (message.text || (message.type === 'text') || message._lctext) {
@@ -422,7 +422,7 @@ function sendMessage() {
     messageInput.value = '';
     
     // 在UI中显示消息
-    addMessage(currentUser, message, true);
+    addMessage(chatCurrentUser, message, true);
     
     // 通过聊天桥发送消息
     let bridgeSent = false;
@@ -481,26 +481,39 @@ function reconnectToLeanCloud() {
             conversationInstance = null;
         }
         
-        console.log('尝试重新连接，用户：', currentUser);
+        console.log('尝试重新连接，用户：', chatCurrentUser);
+        
+        // 如果没有用户信息或房间信息，无法重连
+        if (!chatCurrentUser || !chatRoomId) {
+            console.error('缺少用户信息或房间信息，无法重连');
+            addSystemMessage('重连失败：房间信息不完整');
+            updateOnlineStatus(false);
+            reject(new Error('缺少重连所需信息'));
+            return;
+        }
         
         // 重新创建客户端实例
-        realtime.createIMClient(currentUser)
+        realtime.createIMClient(chatCurrentUser)
             .then(function(c) {
                 client = c;
                 addSystemMessage('已重新连接到服务器');
                 updateOnlineStatus(true);
                 
-                // 获取当前房间ID - 使用存储的值而不是从DOM获取
-                const roomCode = currentRoomId;
-                if (!roomCode) {
-                    throw new Error('无法恢复房间ID');
-                }
-                
-                console.log('重新加入房间:', roomCode);
+                // 获取当前房间ID - 使用存储的值
+                const roomCode = chatRoomId;
                 const convId = 'ROOM_' + roomCode.padStart(4, '0');
+                console.log('重新加入房间:', convId);
                 
                 // 重新加入对话
-                return client.getConversation(convId);
+                return client.getConversation(convId)
+                    .catch(err => {
+                        console.error('尝试获取会话失败，创建新会话:', err);
+                        return client.createConversation({
+                            name: convId,
+                            unique: true,
+                            members: [chatCurrentUser]
+                        });
+                    });
             })
             .then(function(conversation) {
                 conversationInstance = conversation;
@@ -522,7 +535,7 @@ function reconnectToLeanCloud() {
                     addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
                 });
                 
-                resolve();
+                resolve(conversation);
             })
             .catch(function(error) {
                 console.error('重新连接失败:', error);
@@ -562,7 +575,7 @@ function handleFileSelection() {
             
             // 发送文件消息
             const message = new AV.Realtime.FileMessage(savedFile);
-            addMessage(currentUser, `发送了文件: ${file.name} (${formatFileSize(file.size)})`, true);
+            addMessage(chatCurrentUser, `发送了文件: ${file.name} (${formatFileSize(file.size)})`, true);
             return conversationInstance.send(message);
         }).catch(function(error) {
             // 移除进度条
@@ -572,7 +585,7 @@ function handleFileSelection() {
         });
     } else {
         // 离线模式：模拟文件发送
-        addMessage(currentUser, `发送了文件: ${file.name} (${formatFileSize(file.size)})`, true);
+        addMessage(chatCurrentUser, `发送了文件: ${file.name} (${formatFileSize(file.size)})`, true);
         addSystemMessage('文件处理功能在离线版本中不可用');
     }
     
