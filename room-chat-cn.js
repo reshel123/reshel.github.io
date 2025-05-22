@@ -89,6 +89,8 @@ function updateOnlineStatus(online) {
 
 // 加入房间
 function joinRoom(roomCode, username) {
+    console.log(`尝试加入房间: ${roomCode}, 用户名: ${username}`);
+    
     // 存储当前用户信息
     currentUser = username;
     currentRoomId = roomCode;
@@ -110,6 +112,13 @@ function joinRoom(roomCode, username) {
     
     // 添加系统消息
     addSystemMessage(`欢迎 ${username} 加入房间 ${roomCode}`);
+    
+    // 重置聊天元素引用，确保使用正确的DOM元素
+    const chatInputElement = document.getElementById('userInput');
+    const messageInput = document.getElementById('messageInput');
+    if (!messageInput && chatInputElement) {
+        window.messageInput = chatInputElement; // 全局保存引用，便于其他函数使用
+    }
     
     if (isOnline) {
         // 在线模式：连接到LeanCloud实时通信服务
@@ -136,29 +145,63 @@ function connectToLeanCloud(username, roomCode) {
         conversationInstance = null;
     }
     
+    // 显示详细的连接状态
+    addSystemMessage(`连接信息: 用户=${username}, 房间=${roomCode}`);
+    console.log('连接LeanCloud:', { user: username, room: roomCode });
+    
     // 创建客户端实例
     realtime.createIMClient(username)
         .then(function(c) {
             client = c;
             addSystemMessage('已连接到服务器');
+            console.log('已创建客户端:', client.id);
             updateOnlineStatus(true);
             
+            // 统一房间ID格式：确保所有设备创建相同的会话ID
+            // 使用固定前缀和统一的房间码格式
+            var convId = 'ROOM_' + roomCode.padStart(4, '0');
+            addSystemMessage(`尝试加入房间ID: ${convId}`);
+            console.log('尝试加入对话:', convId);
+            
             // 查找或创建对话
-            return client.getConversation('ROOM_' + roomCode)
+            return client.getConversation(convId)
                 .catch(() => {
-                    // 如果对话不存在，则创建一个新对话
+                    // 如果对话不存在，则创建一个新对话，确保唯一性
+                    console.log('对话不存在，创建新对话:', convId);
                     return client.createConversation({
-                        name: 'ROOM_' + roomCode,
+                        name: convId,
                         unique: true,
-                        members: []
+                        members: [username] // 强制添加自己为成员
                     });
                 });
         })
         .then(function(conversation) {
             conversationInstance = conversation;
             
+            // 显示会话ID信息便于调试
+            addSystemMessage(`已加入房间，会话ID: ${conversation.id}`);
+            console.log('已获取对话:', conversation.id);
+            
+            // 尝试加入对话作为成员
+            if (conversation.members && conversation.members.indexOf(username) === -1) {
+                console.log('用户不在成员列表中，尝试加入');
+                // 确保用户在会话成员列表中
+                return conversation.add([username])
+                    .then(() => conversation)
+                    .catch(err => {
+                        console.warn('添加成员失败，但继续使用对话:', err);
+                        return conversation;
+                    });
+            }
+            
+            return conversation;
+        })
+        .then(function(conversation) {
+            console.log('设置消息监听');
+            
             // 监听消息
             conversation.on('message', function(message) {
+                addSystemMessage(`收到消息，来自: ${message.from}`);
                 receiveMessage(message);
             });
             
@@ -182,13 +225,15 @@ function connectToLeanCloud(username, roomCode) {
                     }).then(function(messages) {
                         // 显示最近的消息
                         if (messages.length > 0) {
-                            addSystemMessage('加载最近的消息');
+                            addSystemMessage(`加载最近的消息: ${messages.length}条`);
                             messages.reverse().forEach(function(message) {
                                 receiveMessage(message);
                             });
+                        } else {
+                            addSystemMessage('没有历史消息');
                         }
                     }).catch(function(error) {
-                        addSystemMessage('无法加载历史消息');
+                        addSystemMessage('无法加载历史消息: ' + error.message);
                     });
                 } 
                 // 尝试使用 conversation.query (旧版API)
@@ -198,13 +243,15 @@ function connectToLeanCloud(username, roomCode) {
                     }).then(function(messages) {
                         // 显示最近的消息
                         if (messages.length > 0) {
-                            addSystemMessage('加载最近的消息');
+                            addSystemMessage(`加载最近的消息: ${messages.length}条`);
                             messages.reverse().forEach(function(message) {
                                 receiveMessage(message);
                             });
+                        } else {
+                            addSystemMessage('没有历史消息');
                         }
                     }).catch(function(error) {
-                        addSystemMessage('无法加载历史消息');
+                        addSystemMessage('无法加载历史消息: ' + error.message);
                     });
                 }
                 // 无法查询历史消息
@@ -212,19 +259,22 @@ function connectToLeanCloud(username, roomCode) {
                     addSystemMessage('无法加载历史消息，但可以发送新消息');
                 }
             } catch (error) {
-                addSystemMessage('加载历史消息失败');
+                addSystemMessage('加载历史消息失败: ' + error.message);
             }
             
             // 尝试加入对话，处理API兼容性问题
             try {
                 if (typeof conversation.join === 'function') {
                     // 新版API支持join方法
+                    console.log('使用join方法加入对话');
                     return conversation.join();
                 } else {
                     // 旧版API可能不需要显式join或使用其他方式
+                    console.log('对话不支持join方法，跳过');
                     return Promise.resolve(conversation);
                 }
             } catch (error) {
+                addSystemMessage('加入房间时出错: ' + error.message);
                 return Promise.resolve(conversation);
             }
         })
@@ -232,6 +282,7 @@ function connectToLeanCloud(username, roomCode) {
             addSystemMessage('连接成功，现在可以发送消息了！');
         })
         .catch(function(error) {
+            console.error('连接聊天服务器失败:', error);
             addSystemMessage('连接聊天服务器失败: ' + error.message);
             
             // 回退到离线模式
@@ -247,52 +298,196 @@ function connectToLeanCloud(username, roomCode) {
 
 // 接收消息处理
 function receiveMessage(message) {
-    // 不处理自己发的消息（因为已经显示在UI上了）
-    if (message.from === currentUser) {
-        return;
-    }
+    // 消息调试信息
+    console.log('收到消息对象:', message);
     
-    // 处理文本消息
-    if (message instanceof AV.Realtime.TextMessage) {
-        addMessage(message.from, message.text, false);
-    }
-    // 处理文件消息
-    else if (message instanceof AV.Realtime.FileMessage) {
-        const file = message._lcfile;
-        addMessage(
-            message.from,
-            `发送了文件: ${file.name || '未命名文件'} (下载)`,
-            false,
-            file
-        );
+    try {
+        // 检查消息来源
+        if (!message || !message.from) {
+            console.warn('收到无效消息或无发送者信息');
+            return;
+        }
+        
+        // 不处理自己发的消息（因为已经显示在UI上了）
+        if (message.from === currentUser) {
+            console.log('跳过自己发送的消息');
+            return;
+        }
+        
+        // 添加调试信息
+        console.log(`接收消息: 发送者=${message.from}, 当前用户=${currentUser}`);
+        
+        // 处理文本消息
+        if (message.text || (message instanceof AV.Realtime.TextMessage)) {
+            // 提取消息文本 - 兼容不同SDK版本
+            let messageText = message.text;
+            if (typeof messageText === 'undefined' && message._lctext) {
+                messageText = message._lctext;
+            }
+            
+            if (messageText) {
+                console.log(`显示文本消息: ${messageText}`);
+                addMessage(message.from, messageText, false);
+            }
+        }
+        // 处理文件消息
+        else if (message.file || (message instanceof AV.Realtime.FileMessage) || message._lcfile) {
+            // 提取文件信息 - 兼容不同SDK版本
+            const file = message._lcfile || message.file || {};
+            console.log('接收到文件消息:', file);
+            
+            addMessage(
+                message.from,
+                `发送了文件: ${file.name || '未命名文件'} (下载)`,
+                false,
+                file
+            );
+        }
+        // 未知消息类型
+        else {
+            console.warn('收到未知类型消息:', message);
+            addSystemMessage(`收到来自 ${message.from} 的未知类型消息`);
+        }
+    } catch (error) {
+        console.error('处理接收消息时出错:', error);
+        addSystemMessage('处理收到的消息时出错: ' + error.message);
     }
 }
 
 // 发送消息
 function sendMessage() {
-    const text = userInput.value.trim();
-    if (!text) return;
-    
-    addMessage(currentUser, text, true);
-    
-    // 清空输入框
-    userInput.value = '';
-    
-    if (isOnline && conversationInstance) {
-        // 在线模式：发送到LeanCloud
-        const message = new AV.Realtime.TextMessage(text);
-        conversationInstance.send(message)
-            .catch(function(error) {
-                addSystemMessage('发送失败: ' + error.message);
-            });
-    } else {
-        // 离线模式：模拟回复
-        if (Math.random() > 0.5) {
-            setTimeout(() => {
-                addMessage('AI助手', '这是一条自动回复消息。实际环境中，这里会显示其他用户发送的消息。', false);
-            }, 1000 + Math.random() * 2000);
-        }
+    // 获取正确的消息输入元素
+    var messageInput = document.getElementById('userInput');
+    if (!messageInput) {
+        console.error('无法找到消息输入元素');
+        addSystemMessage('发送消息失败：无法找到输入框');
+        return;
     }
+    
+    var message = messageInput.value.trim();
+    console.log(`尝试发送消息: "${message}"`);
+    
+    // 检查消息是否为空
+    if (message === '') {
+        addSystemMessage('消息不能为空');
+        return;
+    }
+    
+    // 检查连接状态
+    if (!isOnline || !conversationInstance) {
+        addSystemMessage('未连接到服务器，无法发送消息');
+        addMessage(currentUser, message, true);
+        messageInput.value = '';
+        return;
+    }
+    
+    try {
+        // 创建文本消息
+        addSystemMessage(`正在发送消息...`);
+        console.log('发送消息到会话:', conversationInstance.id);
+        
+        conversationInstance.send(new AV.Realtime.TextMessage(message))
+            .then(function(messageInstance) {
+                console.log('消息发送成功:', messageInstance);
+                // 在聊天界面添加消息
+                addMessage(currentUser, message, true);
+                // 清空输入框
+                messageInput.value = '';
+            })
+            .catch(function(error) {
+                console.error('发送消息失败:', error);
+                addSystemMessage('消息发送失败: ' + error.message);
+                // 尝试重新连接
+                addSystemMessage('正在尝试重新连接...');
+                
+                // 保存消息以便重新连接后发送
+                const pendingMessage = message;
+                
+                // 重新连接
+                reconnectToLeanCloud().then(() => {
+                    // 重新连接成功后再次尝试发送
+                    if (conversationInstance) {
+                        console.log('重新连接成功，尝试重发消息');
+                        conversationInstance.send(new AV.Realtime.TextMessage(pendingMessage))
+                            .then(() => {
+                                addMessage(currentUser, pendingMessage, true);
+                                messageInput.value = '';
+                            })
+                            .catch(err => {
+                                console.error('重发消息失败:', err);
+                                addSystemMessage('消息发送失败，请重试');
+                            });
+                    }
+                });
+            });
+    } catch (error) {
+        console.error('发送消息时出错:', error);
+        addSystemMessage('发送消息过程出错: ' + error.message);
+    }
+}
+
+// 重新连接函数
+function reconnectToLeanCloud() {
+    addSystemMessage('正在重新连接...');
+    
+    return new Promise((resolve, reject) => {
+        // 释放之前的客户端连接
+        if (client) {
+            client.close();
+            client = null;
+            conversationInstance = null;
+        }
+        
+        console.log('尝试重新连接，用户：', currentUser);
+        
+        // 重新创建客户端实例
+        realtime.createIMClient(currentUser)
+            .then(function(c) {
+                client = c;
+                addSystemMessage('已重新连接到服务器');
+                updateOnlineStatus(true);
+                
+                // 获取当前房间ID - 使用存储的值而不是从DOM获取
+                const roomCode = currentRoomId;
+                if (!roomCode) {
+                    throw new Error('无法恢复房间ID');
+                }
+                
+                console.log('重新加入房间:', roomCode);
+                const convId = 'ROOM_' + roomCode.padStart(4, '0');
+                
+                // 重新加入对话
+                return client.getConversation(convId);
+            })
+            .then(function(conversation) {
+                conversationInstance = conversation;
+                addSystemMessage('已重新加入房间');
+                console.log('已重新加入会话:', conversation.id);
+                
+                // 重新设置消息监听
+                conversation.on('message', function(message) {
+                    receiveMessage(message);
+                });
+                
+                // 监听成员加入
+                conversation.on('membersjoined', function(payload) {
+                    addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
+                });
+                
+                // 监听成员离开
+                conversation.on('membersleft', function(payload) {
+                    addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
+                });
+                
+                resolve();
+            })
+            .catch(function(error) {
+                console.error('重新连接失败:', error);
+                addSystemMessage('重新连接失败: ' + error.message);
+                updateOnlineStatus(false);
+                reject(error);
+            });
+    });
 }
 
 // 处理文件选择
