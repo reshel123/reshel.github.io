@@ -506,22 +506,13 @@
                 <div class="welcome-message">
                     <p>欢迎使用聊天室功能！请点击"进入房间"按钮开始私密聊天。</p>
                     <p>同一房间码的用户可以互相发送消息和文件。</p>
+                    <p><strong>在线状态</strong>：<span id="onlineStatus" style="color:#ffcc00;">正在检查连接...</span></p>
                     <p><strong>测试方法</strong>：打开两个浏览器窗口，使用相同的房间码加入，即可在两个窗口间互相发送消息。</p>
-                    <p><strong>网络提示</strong>：如果遇到连接问题，请尝试以下方法：</p>
-                    <ol>
-                        <li>检查网络连接是否稳定</li>
-                        <li>尝试使用4G/5G移动网络</li>
-                        <li>关闭并重新打开浏览器</li>
-                        <li>清除浏览器缓存后重试</li>
-                        <li>等待30秒让系统自动重连</li>
-                    </ol>
                 </div>
-                <!-- 聊天消息将在这里动态添加 -->
             </div>
             
             <div class="input-container">
                 <div id="filePreviewContainer" class="hidden">
-                    <!-- 文件预览将在这里显示 -->
                 </div>
                 <textarea id="userInput" placeholder="在这里输入你的消息..." rows="3" disabled></textarea>
                 <div class="message-buttons">
@@ -534,7 +525,7 @@
         </main>
         
         <footer>
-            <p>© 2025 DeepSeek AI 助手 | 作者：黄金树 | 房间聊天功能</p>
+            <p>© 2025 DeepSeek AI 助手 | 聊天室功能</p>
         </footer>
     </div>
     
@@ -550,170 +541,82 @@
         </div>
     </div>
     
-    <!-- LeanCloud SDK (国内版) - 直接引入方式 -->
+    <!-- LeanCloud SDK 加载 -->
     <script>
-        // 更新加载状态
         function updateLoadingStatus(status) {
             document.querySelector('.loading-status').textContent = status;
         }
 
-        // 隐藏加载窗口
         function hideLoadingOverlay() {
             document.getElementById('loadingOverlay').classList.add('hidden');
         }
         
-        // 动态加载SDK脚本
-        function loadScript(url, callback) {
-            updateLoadingStatus(`正在加载: ${url.split('/').pop()}`);
-            console.log('开始加载脚本:', url);
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = url;
-            script.onerror = function(error) {
-                console.error('加载失败:', url, error);
-                updateLoadingStatus(`加载失败: ${url.split('/').pop()}，请检查网络连接`);
-                if (callback) callback(false);
-            };
-            script.onload = function() {
-                console.log('加载成功:', url);
-                updateLoadingStatus(`加载成功: ${url.split('/').pop()}`);
-                if (callback) callback(true);
-            };
-            document.head.appendChild(script);
-        }
-
-        // 国内可靠CDN地址
         var scriptElements = [
-            { src: 'https://lc-s2-i9khkibj.cn-n1.lcfile.com/scripts/av-min.js' }, // 自建CDN
-            { src: 'https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/leancloud-realtime/5.0.0/realtime.browser.min.js' }, // 字节跳动CDN
-            { src: 'https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js' } // 字节跳动CDN
+            { src: 'https://cdn.bootcdn.net/ajax/libs/leancloud-storage/4.15.0/av.min.js', localFallback: 'lib/av.min.js' }, 
+            { src: 'https://cdn.bootcdn.net/ajax/libs/leancloud-realtime/5.0.0/realtime.browser.min.js', localFallback: 'lib/realtime.browser.min.js' }, 
+            { src: 'https://cdn.bootcdn.net/ajax/libs/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js', localFallback: 'lib/typed-messages.min.js' }
         ];
 
+        var allScripts = [
+            ...scriptElements,
+            { src: 'leancloud-config.js' },
+            { src: 'room-chat-cn.js' }
+        ];
+
+        var totalScripts = allScripts.length;
+        var loadedScripts = 0;
+
         function loadScriptSequentially(index) {
-            if (index >= scriptElements.length) {
-                console.log('所有SDK加载完成');
-                updateLoadingStatus('SDK加载完成，正在初始化...');
-                initializeSDK();
+            if (index >= allScripts.length) {
+                console.log('所有脚本加载完成');
+                updateLoadingStatus('所有脚本加载完成，正在初始化...');
+                setTimeout(function() {
+                    hideLoadingOverlay();
+                }, 1000);
                 return;
             }
 
             var script = document.createElement('script');
-            script.src = scriptElements[index].src;
+            script.src = allScripts[index].src;
             script.onload = function() {
-                console.log(`${scriptElements[index].src} 加载成功`);
-                updateLoadingStatus(`SDK ${index+1}/${scriptElements.length} 加载成功`);
+                loadedScripts++;
+                updateLoadingStatus(`脚本 ${loadedScripts}/${totalScripts} 加载成功: ${allScripts[index].src.split('/').pop()}`);
                 loadScriptSequentially(index + 1);
             };
             script.onerror = function(error) {
-                console.error(`${scriptElements[index].src} 加载失败`, error);
-                updateLoadingStatus(`SDK ${index+1}/${scriptElements.length} 加载失败，尝试备用源`);
-                
-                // 根据索引选择不同的备用源
-                var backupSrc = '';
-                switch(index) {
-                    case 0: // av.min.js 备用
-                        backupSrc = 'https://cdn.staticfile.org/leancloud-storage/4.15.0/av.min.js';
-                        break;
-                    case 1: // realtime 备用
-                        backupSrc = 'https://cdn.staticfile.org/leancloud-realtime/5.0.0/realtime.browser.min.js';
-                        break;
-                    case 2: // typed-messages 备用
-                        backupSrc = 'https://cdn.staticfile.org/leancloud-realtime-plugin-typed-messages/4.0.1/typed-messages.min.js';
-                        break;
-                }
-                
-                if (backupSrc) {
-                    updateLoadingStatus(`正在尝试备用源加载 SDK ${index+1}...`);
-                    var backupScript = document.createElement('script');
-                    backupScript.src = backupSrc;
-                    backupScript.onload = function() {
-                        console.log(`备用源加载成功: ${backupSrc}`);
-                        updateLoadingStatus(`SDK ${index+1} 备用源加载成功`);
+                if (index < scriptElements.length && allScripts[index].localFallback) {
+                    updateLoadingStatus(`远程脚本加载失败，尝试本地版本: ${allScripts[index].localFallback}`);
+                    
+                    var localScript = document.createElement('script');
+                    localScript.src = allScripts[index].localFallback;
+                    localScript.onload = function() {
+                        loadedScripts++;
+                        updateLoadingStatus(`脚本 ${loadedScripts}/${totalScripts} 本地加载成功`);
                         loadScriptSequentially(index + 1);
                     };
-                    backupScript.onerror = function() {
-                        updateLoadingStatus(`SDK加载失败，请刷新页面重试或联系管理员`);
-                        console.error('所有源都加载失败');
-                        alert('无法加载聊天所需SDK，请检查您的网络连接后刷新页面');
+                    localScript.onerror = function() {
+                        updateLoadingStatus(`脚本加载失败，应用将以离线模式运行`);
+                        loadScriptSequentially(index + 1);
                     };
-                    document.head.appendChild(backupScript);
+                    document.head.appendChild(localScript);
+                } else if (index < allScripts.length - 1) {
+                    updateLoadingStatus(`脚本加载失败，继续加载其他脚本`);
+                    loadScriptSequentially(index + 1);
                 } else {
-                    updateLoadingStatus(`SDK加载失败，请刷新页面重试`);
-                    alert('无法加载聊天所需SDK，请检查您的网络连接后刷新页面');
+                    updateLoadingStatus(`主要功能脚本加载失败，请刷新页面重试`);
+                    alert('聊天功能脚本加载失败，请刷新页面重试或检查网络连接');
                 }
             };
             document.head.appendChild(script);
         }
 
-        // 开始加载SDK
         loadScriptSequentially(0);
 
-        // 初始化SDK
-        function initializeSDK() {
-            console.log('开始初始化SDK');
-            try {
-                if (!window.AV) {
-                    console.error('AV 对象不存在，SDK加载失败');
-                    updateLoadingStatus('SDK加载失败，AV对象不存在');
-                    alert('SDK加载失败，请刷新页面重试');
-                    return;
-                }
-                
-                console.log('AV对象存在:', window.AV);
-                
-                if (!window.Realtime) {
-                    console.error('Realtime 对象不存在，SDK加载失败');
-                    updateLoadingStatus('SDK加载失败，Realtime对象不存在');
-                    alert('SDK加载失败，请刷新页面重试');
-                    return;
-                }
-                
-                console.log('Realtime对象存在:', window.Realtime);
-                
-                // 全局定义消息类型
-                window.TextMessage = window.AV.Realtime.TextMessage;
-                window.FileMessage = window.AV.Realtime.FileMessage;
-                
-                if (!window.TextMessage || !window.FileMessage) {
-                    console.error('消息类型未定义，SDK加载可能不完整');
-                    console.log('TextMessage:', window.TextMessage);
-                    console.log('FileMessage:', window.FileMessage);
-                    updateLoadingStatus('SDK加载不完整，请刷新页面重试');
-                    alert('SDK加载不完整，请刷新页面重试');
-                    return;
-                }
-                
-                console.log('SDK初始化完成，加载主脚本');
-                updateLoadingStatus('正在加载聊天功能...');
-                
-                // 加载主脚本
-                loadScript('room-chat-cn.js', function(success) {
-                    if (!success) {
-                        updateLoadingStatus('聊天功能脚本加载失败，请刷新页面重试');
-                        alert('聊天功能脚本加载失败，请刷新页面重试');
-                    } else {
-                        // 加载完成，2秒后隐藏加载窗口
-                        updateLoadingStatus('加载完成！');
-                        setTimeout(function() {
-                            hideLoadingOverlay();
-                        }, 1500);
-                    }
-                });
-            } catch (error) {
-                console.error('初始化SDK时发生错误:', error);
-                updateLoadingStatus('初始化SDK时发生错误: ' + error.message);
-                alert('初始化SDK时发生错误，请刷新页面重试');
-            }
-        }
-
-        // 全局函数，用于从任何地方调用加入房间
         function joinChatRoom() {
-            console.log('加入房间按钮被点击');
             const roomCode = document.getElementById('roomCode').value.trim();
             const userName = document.getElementById('userName').value.trim();
             const roomError = document.getElementById('roomError');
             
-            // 验证输入
             if (!/^\d{4}$/.test(roomCode)) {
                 roomError.textContent = '房间码必须是4位数字';
                 roomError.style.display = 'block';
@@ -728,13 +631,11 @@
                 return;
             }
             
-            // 触发自定义事件，通知room-chat-cn.js处理
             const joinEvent = new CustomEvent('join-chat-room', { 
                 detail: { roomCode, userName } 
             });
             document.dispatchEvent(joinEvent);
             
-            // 隐藏弹窗
             document.getElementById('roomModal').classList.add('hidden');
         }
     </script>
