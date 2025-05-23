@@ -162,13 +162,16 @@ function setupMockSDK() {
     
     // 如果全局对象不存在，创建它们
     if (!window.AV) window.AV = {};
-    if (!window.Realtime) window.Realtime = function() { this.createIMClient = createMockIMClient; };
+    if (!window.Realtime) window.Realtime = function() { 
+        this.createIMClient = createMockIMClient; 
+    };
     
     // 创建模拟客户端
     function createMockIMClient(clientId) {
         console.log('创建模拟客户端:', clientId);
         return Promise.resolve({
             id: clientId,
+            // 确保on方法存在，解决client.on不是函数的问题
             on: function(event, callback) {
                 console.log('模拟客户端注册事件:', event);
                 // 存储事件回调，可能需要时触发
@@ -183,7 +186,33 @@ function setupMockSDK() {
             },
             createConversation: function(options) {
                 console.log('模拟创建会话:', options);
-                return Promise.resolve(createMockConversation(options.id || 'mock_conv_' + Date.now(), clientId));
+                // 确保transient选项被正确处理
+                const isTransient = options.transient === true;
+                const convId = options.id || ('mock_conv_' + Date.now());
+                const conv = createMockConversation(convId, clientId);
+                conv.transient = isTransient;
+                conv.name = options.name || convId;
+                
+                if (options.members && options.members.length > 0) {
+                    conv.members = options.members.slice();
+                }
+                
+                return Promise.resolve(conv);
+            },
+            // 添加createChatRoom方法，以便测试
+            createChatRoom: function(options) {
+                console.log('模拟创建聊天室:', options);
+                const convId = options.id || ('mock_chatroom_' + Date.now());
+                const conv = createMockConversation(convId, clientId);
+                conv.transient = true; // 聊天室强制为transient
+                conv.name = options.name || convId;
+                conv.isChatRoom = true; // 标记为聊天室
+                
+                if (options.members && options.members.length > 0) {
+                    conv.members = options.members.slice();
+                }
+                
+                return Promise.resolve(conv);
             }
         });
     }
@@ -194,6 +223,7 @@ function setupMockSDK() {
             id: convId,
             name: convId,
             members: [clientId],
+            transient: false,
             _messageListeners: [],
             on: function(event, callback) {
                 console.log('模拟会话注册事件:', event);
@@ -204,20 +234,47 @@ function setupMockSDK() {
                 if (!this._eventCallbacks) this._eventCallbacks = {};
                 if (!this._eventCallbacks[event]) this._eventCallbacks[event] = [];
                 this._eventCallbacks[event].push(callback);
+                return this; // 支持链式调用
             },
             send: function(message) {
                 console.log('模拟发送消息:', message);
-                // 这里只模拟成功，实际不会发送到其他客户端
+                
+                // 设置消息发送者
+                message.from = clientId;
+                message.cid = this.id;
+                message.timestamp = Date.now();
+                message.id = 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                
+                // 这里通过广播方式，尝试将消息发送到其他页面
+                if (window.crossDevicesBridge) {
+                    console.log('通过跨设备桥发送消息', message);
+                    try {
+                        window.crossDevicesBridge.sendMessage(message);
+                    } catch (e) {
+                        console.error('跨设备桥发送失败:', e);
+                    }
+                }
+                
+                if (window.chatBridge) {
+                    console.log('通过本地通信桥发送消息');
+                    try {
+                        window.chatBridge.sendMessage(message);
+                    } catch (e) {
+                        console.error('本地通信桥发送失败:', e);
+                    }
+                }
+                
+                // 模拟成功，返回消息
                 return Promise.resolve(message);
             },
             join: function() {
                 console.log('模拟加入会话');
-                return Promise.resolve();
+                return Promise.resolve(this);
             },
             add: function(members) {
                 console.log('模拟添加成员:', members);
                 this.members = this.members.concat(members);
-                return Promise.resolve();
+                return Promise.resolve(this);
             },
             queryMessages: function() {
                 console.log('模拟查询消息');
@@ -233,6 +290,8 @@ function setupMockSDK() {
         this.text = text;
         this.from = chatCurrentUser || 'unknown';
         this.timestamp = Date.now();
+        // 添加一个唯一的ID，帮助调试
+        this.id = 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     };
     
     // 设置模拟Realtime实例
@@ -304,8 +363,8 @@ function joinRoom(roomCode, username) {
     // 添加系统消息
     addSystemMessage(`欢迎 ${username} 加入房间 ${roomCode}`);
     
-    // 服务端房间ID格式
-    const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
+    // 服务端房间ID格式 - 与全局通信保持一致
+    const formattedRoomId = 'GLOBAL_ROOM_' + roomCode;
     
     // 首先尝试加入跨设备通信桥（仅同一浏览器不同标签页有效）
     if (window.crossDevicesBridge) {
@@ -434,128 +493,149 @@ function connectToLeanCloud(username, roomCode) {
                 }
                 
                 // 确保从标准化的房间ID创建会话 - 所有设备使用相同ID
-                var convId = 'GLOBAL_ROOM_' + roomCode;  // 改为固定格式，避免padding问题
+                var convId = 'GLOBAL_ROOM_' + roomCode;  // 使用一致的全局ID格式
                 addSystemMessage(`尝试加入全局房间: ${convId}`);
                 console.log('[重要]尝试加入全局对话:', convId);
                 
                 // 打印房间ID和用户ID信息，方便调试
                 console.log(`[重要]当前房间和用户信息: roomID=${convId}, userID=${username}`);
                 
-                // 获取或创建会话 - 使用固定全局ID
-                return client.getConversation(convId)
-                    .then(conversation => {
-                        console.log('找到现有对话:', conversation.id);
-                        return conversation;
-                    })
-                    .catch(() => {
-                        // 对话不存在，创建新的全局共享对话
-                        console.log('对话不存在，创建全局共享对话:', convId);
-                        return client.createConversation({
-                            name: roomCode,
-                            unique: true,  // 确保全局唯一
-                            id: convId,
-                            transient: false,  // 非暂态，持久保存
-                            members: [],  // 不指定初始成员，允许任何人加入
-                            _roomId: roomCode  // 自定义属性，标记为聊天室
+                // 获取或创建会话 - 使用聊天室模式
+                console.log('[重要]尝试创建全局聊天室:', convId);
+                return client.createConversation({
+                    name: 'Global_' + roomCode,
+                    transient: true,  // 设置为聊天室模式，不需要维护成员，所有人可加入
+                    id: convId,       // 明确指定ID
+                    unique: false,     // 可以重复创建
+                    members: [username]  // 将当前用户作为初始成员
+                }).then(chatRoom => {
+                    console.log('成功创建/获取全局聊天室:', chatRoom.id);
+                    showDebugInfo(`聊天室ID: ${chatRoom.id}, 成员数: ${chatRoom.members ? chatRoom.members.length : '未知'}`);
+                    if (chatRoom.members && chatRoom.members.length > 0) {
+                        showDebugInfo(`聊天室成员: ${chatRoom.members.join(', ')}`);
+                    }
+                    return chatRoom;  
+                }).catch(err => {
+                    console.warn('创建聊天室失败，尝试常规会话:', err);
+                    // 如果创建聊天室失败，尝试获取已有会话
+                    return client.getConversation(convId)
+                        .then(conversation => {
+                            console.log('找到现有对话:', conversation.id);
+                            return conversation;
+                        })
+                        .catch(() => {
+                            // 最后尝试创建普通会话但设置为开放所有人
+                            console.log('创建通用会话，设为公开:', convId);
+                            return client.createConversation({
+                                name: 'Room_' + roomCode,
+                                unique: true,  // 确保唯一
+                                id: convId,
+                                transient: true,  // 尝试设置为聊天室
+                                members: [],   // 不指定初始成员
+                            });
                         });
-                    })
-                    .then(conversation => {
-                        conversationInstance = conversation;
-                        
-                        // 显示会话ID信息
-                        addSystemMessage(`已获取全局房间，会话ID: ${conversation.id}`);
-                        console.log('[重要]已获取对话，确认ID:', conversation.id);
-                        
-                        // 1. 先加入会话
-                        if (typeof conversation.join === 'function') {
-                            return conversation.join()
-                                .then(() => {
-                                    addSystemMessage('已加入全局会话');
-                                    return conversation;
-                                })
-                                .catch(err => {
-                                    console.warn('join方法失败，尝试add方法:', err);
-                                    if (typeof conversation.add === 'function') {
-                                        return conversation.add([username])
-                                            .then(() => {
-                                                addSystemMessage('已通过成员添加方式加入会话');
-                                                return conversation;
-                                            })
-                                            .catch(e => {
-                                                console.warn('add方法失败:', e);
-                                                return conversation;
-                                            });
-                                    }
-                                    return conversation;
-                                });
-                        } else if (typeof conversation.add === 'function') {
-                            return conversation.add([username])
-                                .then(() => {
-                                    addSystemMessage('已加入会话成员列表');
-                                    return conversation;
-                                })
-                                .catch(e => {
-                                    console.warn('add方法失败:', e);
-                                    return conversation;
-                                });
+                });
+            })
+            .then(conversation => {
+                conversationInstance = conversation;
+                
+                // 显示会话ID信息
+                addSystemMessage(`已获取全局房间，会话ID: ${conversation.id}`);
+                console.log('[重要]已获取对话，确认ID:', conversation.id);
+                
+                // 1. 先加入会话
+                if (typeof conversation.join === 'function') {
+                    return conversation.join()
+                        .then(() => {
+                            addSystemMessage('已加入全局会话');
+                            return conversation;
+                        })
+                        .catch(err => {
+                            console.warn('join方法失败，尝试add方法:', err);
+                            if (typeof conversation.add === 'function') {
+                                return conversation.add([username])
+                                    .then(() => {
+                                        addSystemMessage('已通过成员添加方式加入会话');
+                                        return conversation;
+                                    })
+                                    .catch(e => {
+                                        console.warn('add方法失败:', e);
+                                        return conversation;
+                                    });
+                            }
+                            return conversation;
+                        });
+                } else if (typeof conversation.add === 'function') {
+                    return conversation.add([username])
+                        .then(() => {
+                            addSystemMessage('已加入会话成员列表');
+                            return conversation;
+                        })
+                        .catch(e => {
+                            console.warn('add方法失败:', e);
+                            return conversation;
+                        });
+                }
+                
+                return conversation;
+            })
+            .then(conversation => {
+                // 2. 设置消息监听
+                try {
+                    // 清除旧监听器
+                    if (typeof conversation.off === 'function') {
+                        conversation.off('message');
+                    }
+                    
+                    // 重新设置消息监听
+                    const messageHandler = function(message) {
+                        console.log('[重要]收到服务器消息:', message);
+                        if (message) {
+                            // 确保消息有来源信息
+                            if (!message.from && message.fromPeerId) {
+                                message.from = message.fromPeerId;
+                            }
+                            showDebugInfo(`服务器收到消息: ${message.from}, 类型: ${message.type || '未知'}`);
+                            receiveMessage(message);
                         }
+                    };
+                    
+                    if (typeof conversation.on === 'function') {
+                        conversation.on('message', messageHandler);
+                        console.log('成功注册消息监听器');
+                        showDebugInfo('重连：成功设置了消息监听器');
                         
-                        return conversation;
-                    })
-                    .then(conversation => {
-                        // 2. 设置消息监听
-                        try {
-                            // 清除旧监听器
-                            if (typeof conversation.off === 'function') {
-                                conversation.off('message');
-                            }
-                            
-                            // 添加新监听器
-                            function handleMessage(message) {
-                                console.log('[重要]收到服务器消息:', message);
-                                if (message) {
-                                    // 确保消息有来源信息
-                                    if (!message.from && message.fromPeerId) {
-                                        message.from = message.fromPeerId;
-                                    }
-                                    receiveMessage(message);
-                                }
-                            }
-                            
-                            if (typeof conversation.on === 'function') {
-                                conversation.on('message', handleMessage);
-                                console.log('成功注册消息监听器');
-                                
-                                // 监听成员变化
-                                conversation.on('membersjoined', function(payload) {
-                                    addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
-                                });
-                                
-                                conversation.on('membersleft', function(payload) {
-                                    addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
-                                });
-                            } else {
-                                console.error('会话对象不支持on方法，消息接收可能不工作');
-                            }
-                        } catch (e) {
-                            console.error('设置消息监听器失败:', e);
-                        }
+                        // 监听成员加入/离开
+                        conversation.on('membersjoined', function(payload) {
+                            addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
+                        });
                         
-                        return conversation;
-                    })
-                    .then(conversation => {
-                        // 3. 查询历史消息
-                        return queryHistoryMessages(conversation);
-                    })
-                    .then(() => {
-                        // 4. 发送加入通知
-                        addSystemMessage('全局通信连接成功，现在可以与其他设备通信！');
-                        
-                        // 延时发送加入通知
-                        setTimeout(() => {
-                            broadcastTestMessage(`${username} 已加入全球聊天`);
-                        }, 1000);
-                    });
+                        conversation.on('membersleft', function(payload) {
+                            addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
+                        });
+                    } else {
+                        console.error('会话对象不支持on方法，消息接收可能不工作');
+                        showDebugInfo('重连：警告：无法注册消息监听器，消息接收可能不可用');
+                    }
+                } catch (e) {
+                    console.error('设置消息监听器失败:', e);
+                    showDebugInfo('设置消息监听器失败: ' + e.message);
+                }
+                
+                return conversation;
+            })
+            .then(conversation => {
+                // 3. 查询历史消息
+                return queryHistoryMessages(conversation);
+            })
+            .then(() => {
+                // 4. 发送加入通知
+                addSystemMessage('全局通信连接成功，现在可以与其他设备通信！');
+                
+                // 延时发送加入通知
+                setTimeout(() => {
+                    broadcastTestMessage(`${username} 已加入全球聊天`);
+                }, 1000);
             })
             .catch(function(error) {
                 clearTimeout(connectionTimeout);
@@ -582,7 +662,7 @@ function setupOfflineMode(username, roomCode) {
     addSystemMessage('已切换到离线模式，只能在同一浏览器内通信');
     
     // 确保跨设备通信桥和本地通信桥已初始化
-    const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
+    const formattedRoomId = 'GLOBAL_ROOM_' + roomCode;
     
     if (window.crossDevicesBridge) {
         try {
@@ -703,6 +783,7 @@ function queryHistoryMessages(conversation) {
 function receiveMessage(message) {
     // 消息调试信息
     console.log('收到消息对象:', message);
+    showDebugInfo(`收到消息: ${message.from}, 类型: ${message.type || '未知'}, ID: ${message.id || '无ID'}`);
     
     try {
         // 忽略系统测试消息
@@ -782,6 +863,7 @@ function sendMessage() {
     
     var message = messageInput.value.trim();
     console.log(`尝试发送消息: "${message}"`);
+    showDebugInfo(`尝试发送消息: "${message}", 当前用户: ${chatCurrentUser}, 房间ID: ${chatRoomId}`);
     
     // 检查消息是否为空
     if (message === '') {
@@ -800,6 +882,7 @@ function sendMessage() {
     if (isOnline && conversationInstance) {
         try {
             console.log('通过LeanCloud发送消息:', message);
+            showDebugInfo(`开始通过LeanCloud发送(会话ID: ${conversationInstance.id})`);
             
             // 安全检查SDK可用性
             if (window.AV && window.AV.Realtime) {
@@ -807,8 +890,10 @@ function sendMessage() {
                 let textMsg;
                 if (window.AV.Realtime.TextMessage) {
                     textMsg = new AV.Realtime.TextMessage(message);
+                    showDebugInfo('使用AV.Realtime.TextMessage创建消息');
                 } else if (AV.TextMessage) {
                     textMsg = new AV.TextMessage(message);
+                    showDebugInfo('使用AV.TextMessage创建消息');
                 } else {
                     throw new Error('TextMessage构造函数不可用');
                 }
@@ -818,10 +903,12 @@ function sendMessage() {
                     conversationInstance.send(textMsg)
                         .then(function(msgInstance) {
                             console.log('LeanCloud消息发送成功:', msgInstance);
+                            showDebugInfo(`LeanCloud消息发送成功: ID=${msgInstance.id}`);
                             leanCloudSent = true;
                         })
                         .catch(function(error) {
                             console.error('LeanCloud发送消息失败:', error);
+                            showDebugInfo(`LeanCloud发送失败: ${error.message}`);
                             addSystemMessage('跨设备消息发送失败');
                         });
                 } else {
@@ -832,10 +919,12 @@ function sendMessage() {
             }
         } catch (error) {
             console.error('发送LeanCloud消息时出错:', error);
+            showDebugInfo(`LeanCloud发送异常: ${error.message}`);
             addSystemMessage(`跨设备发送出错: ${error.message}`);
         }
     } else {
         console.warn('LeanCloud未连接，无法进行跨设备通信');
+        showDebugInfo('LeanCloud未连接，跳过跨设备发送');
     }
     
     // 同时通过跨设备通信桥发送（同一浏览器不同标签页）
@@ -915,20 +1004,33 @@ function reconnectToLeanCloud() {
                 
                 // 获取当前房间ID - 使用存储的值
                 const roomCode = chatRoomId;
-                const convId = 'ROOM_' + roomCode.padStart(4, '0');
+                const convId = 'GLOBAL_ROOM_' + roomCode;
                 console.log('重新加入房间:', convId);
                 
-                // 重新加入对话
-                return client.getConversation(convId)
-                    .catch(err => {
-                        console.error('尝试获取会话失败，创建新会话:', err);
-                        return client.createConversation({
-                            name: roomCode,
-                            unique: true,
-                            id: convId,
-                            members: [chatCurrentUser]
+                // 使用与主连接函数相同的逻辑
+                return client.createConversation({
+                    name: 'Global_' + roomCode,
+                    transient: true,
+                    id: convId,
+                    unique: false
+                }).then(chatRoom => {
+                    console.log('重连成功创建/获取聊天室:', chatRoom.id);
+                    return chatRoom;
+                }).catch(err => {
+                    console.warn('重连创建聊天室失败，尝试常规会话:', err);
+                    // 尝试获取会话
+                    return client.getConversation(convId)
+                        .catch(err => {
+                            console.error('尝试获取会话失败，创建新会话:', err);
+                            return client.createConversation({
+                                name: 'Room_' + roomCode,
+                                unique: true,
+                                id: convId,
+                                transient: true,
+                                members: [chatCurrentUser]
+                            });
                         });
-                    });
+                });
             })
             .then(function(conversation) {
                 conversationInstance = conversation;
@@ -946,26 +1048,42 @@ function reconnectToLeanCloud() {
                 
                 // 重新设置消息监听
                 const messageHandler = function(message) {
+                    console.log('[重要]重连后收到消息:', message);
+                    showDebugInfo(`重连后收到消息: ${message.from || message.fromPeerId}`);
                     receiveMessage(message);
                 };
-                conversation._messageListeners.push(messageHandler);
-                conversation.on('message', messageHandler);
                 
-                // 监听成员加入
-                conversation.on('membersjoined', function(payload) {
-                    addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
-                });
-                
-                // 监听成员离开
-                conversation.on('membersleft', function(payload) {
-                    addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
-                });
-                
-                // 发送测试消息确认连接
-                return sendTestMessage(conversation)
-                    .then(() => {
-                        resolve(conversation);
+                if (typeof conversation.on === 'function') {
+                    conversation.on('message', messageHandler);
+                    
+                    // 监听成员加入/离开
+                    conversation.on('membersjoined', function(payload) {
+                        addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
                     });
+                    
+                    conversation.on('membersleft', function(payload) {
+                        addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
+                    });
+                    
+                    showDebugInfo('重新设置了消息监听器');
+                } else {
+                    console.error('会话对象不支持on方法，消息接收可能不工作');
+                }
+                
+                return conversation;
+            })
+            .then(conversation => {
+                // 2. 查询历史消息
+                return queryHistoryMessages(conversation);
+            })
+            .then(() => {
+                // 4. 发送加入通知
+                addSystemMessage('全局通信连接成功，现在可以与其他设备通信！');
+                
+                // 延时发送加入通知
+                setTimeout(() => {
+                    broadcastTestMessage(`${username} 已加入全球聊天`);
+                }, 1000);
             })
             .catch(function(error) {
                 console.error('重新连接失败:', error);
@@ -1085,11 +1203,15 @@ function addMessage(sender, message, isCurrentUser, fileData) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// 添加系统消息
-function addSystemMessage(message) {
+// 添加系统消息，带文本颜色
+function addSystemMessage(message, color) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'system-message';
     messageDiv.textContent = message;
+    
+    if (color) {
+        messageDiv.style.color = color;
+    }
     
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -1159,6 +1281,7 @@ function broadcastTestMessage() {
     
     // 在界面显示
     addSystemMessage(`正在发送广播测试消息...`);
+    showDebugInfo(`广播内容: ${testMessage}, 会话ID: ${conversationInstance ? conversationInstance.id : '未知'}`);
     
     // 尝试使用LeanCloud发送
     if (isOnline && conversationInstance && typeof conversationInstance.send === 'function') {
@@ -1246,6 +1369,14 @@ function showConnectionInfo() {
     console.log('客户端实例:', client);
     console.log('LeanCloud配置:', window.LC_CONFIG);
     console.log('==================================');
+}
+
+// 显示详细的调试信息
+function showDebugInfo(message) {
+    if (window.DEBUG_MODE) {
+        console.log('[调试]', message);
+        addSystemMessage(`[调试] ${message}`, '#2196f3');
+    }
 }
 
 // 初始化
