@@ -225,9 +225,10 @@ function joinRoom(roomCode, username) {
                     console.log('[调试] 同时加入本地通信桥');
                 }
                 
-                return; // 不再需要LeanCloud模式
+                // 不要立即返回，继续尝试连接LeanCloud作为备份
+                console.log('[调试] 继续连接LeanCloud作为备份通道');
             } else {
-                console.warn('[调试] 跨设备通信桥加入房间失败，尝试回退到其他通信方式');
+                console.warn('[调试] 跨设备通信桥加入房间失败，切换到LeanCloud模式');
             }
         } catch (e) {
             console.error('[调试] 加入跨设备通信桥出错:', e);
@@ -605,8 +606,21 @@ function sendMessage() {
         console.log('[调试] 通过跨设备通信桥发送消息:', crossDeviceSent, message);
         
         if (crossDeviceSent) {
-            console.log('[调试] 跨设备消息已发送，不需要其他通道');
-            return; // 消息已成功发送，不需要继续
+            console.log('[调试] 跨设备消息已发送');
+            // 继续发送到LeanCloud作为备份
+            if (isOnline && conversationInstance) {
+                try {
+                    conversationInstance.send(new AV.Realtime.TextMessage(message))
+                        .then(function(messageInstance) {
+                            console.log('LeanCloud备份消息发送成功:', messageInstance);
+                        })
+                        .catch(function(error) {
+                            console.warn('LeanCloud备份消息发送失败:', error);
+                        });
+                } catch (error) {
+                    console.warn('发送LeanCloud备份消息出错:', error);
+                }
+            }
         } else {
             console.warn('[调试] 跨设备消息发送失败，尝试其他方式');
         }
