@@ -6,6 +6,9 @@ let realtime = null;
 let client = null;
 let isOnline = false;
 
+// 调试模式 - 设置为true以显示更多日志
+window.DEBUG_MODE = true;
+
 // DOM元素引用
 const chatContainer = document.getElementById('chatContainer');
 const userInput = document.getElementById('userInput');
@@ -148,6 +151,9 @@ function initialize() {
     document.addEventListener('join-chat-room', function(e) {
         joinRoom(e.detail.roomCode, e.detail.userName);
     });
+    
+    // 创建调试按钮
+    createDebugButtons();
 }
 
 // 设置模拟SDK，在LeanCloud不可用时提供基本功能
@@ -433,20 +439,23 @@ function connectToLeanCloud(username, roomCode) {
                     console.error('设置事件监听器时出错:', error);
                 }
                 
-                // 统一房间ID格式：确保所有设备创建相同的会话ID
+                // 确保从标准化的房间ID创建会话
                 var convId = 'ROOM_' + roomCode.padStart(4, '0');
                 addSystemMessage(`尝试加入跨设备房间: ${convId}`);
-                console.log('尝试加入对话:', convId);
+                console.log('[重要]尝试加入对话:', convId);
                 
-                // 查找对话
+                // 打印房间ID和用户ID信息，方便调试
+                console.log(`[重要]当前房间和用户信息: roomID=${convId}, userID=${username}`);
+                
+                // 查找对话，强制使用指定ID
                 return client.getConversation(convId)
                     .then(conversation => {
                         console.log('找到现有对话:', conversation.id);
                         return conversation;
                     })
                     .catch(() => {
-                        // 对话不存在，创建新对话
-                        console.log('对话不存在，创建新对话:', convId);
+                        // 对话不存在，创建新对话，明确指定ID和唯一性
+                        console.log('对话不存在，创建新对话，明确ID:', convId);
                         return client.createConversation({
                             name: roomCode,
                             unique: true,
@@ -460,7 +469,7 @@ function connectToLeanCloud(username, roomCode) {
                 
                 // 显示会话ID信息便于调试
                 addSystemMessage(`已获取跨设备房间，会话ID: ${conversation.id}`);
-                console.log('已获取对话:', conversation.id);
+                console.log('[重要]已获取对话，确认ID:', conversation.id);
                 
                 // 确认自己是否在成员列表中
                 const isMember = conversation.members && 
@@ -486,36 +495,79 @@ function connectToLeanCloud(username, roomCode) {
                 // 设置消息监听
                 console.log('设置消息监听');
                 
-                // 移除已有监听器避免重复
-                if (conversation._messageListeners) {
-                    for (let listener of conversation._messageListeners) {
-                        conversation.off('message', listener);
+                // 清除所有现有的监听器
+                try {
+                    if (typeof conversation.off === 'function') {
+                        conversation.off('message'); // 移除所有消息监听器
                     }
-                } else {
                     conversation._messageListeners = [];
+                } catch (err) {
+                    console.warn('清除旧监听器失败:', err);
                 }
                 
-                // 监听消息
-                const messageHandler = function(message) {
-                    console.log('收到跨设备消息事件:', message);
-                    receiveMessage(message);
-                };
-                conversation._messageListeners.push(messageHandler);
-                conversation.on('message', messageHandler);
+                // 添加新的监听器
+                try {
+                    // 监听消息 - 使用命名函数便于调试
+                    function onLeancloudMessage(message) {
+                        console.log('[重要]收到LeanCloud实时消息:', message);
+                        // 为消息添加标识，便于跟踪
+                        if (message) {
+                            message._fromLeanCloud = true;
+                            // 确保消息有来源信息
+                            if (!message.from && message.fromPeerId) {
+                                message.from = message.fromPeerId;
+                            }
+                            receiveMessage(message);
+                        } else {
+                            console.warn('收到空消息对象');
+                        }
+                    }
+                    
+                    // 保存监听器引用
+                    conversation._messageListeners = [onLeancloudMessage];
+                    
+                    // 注册监听器 - 确保使用正确的方法
+                    if (typeof conversation.on === 'function') {
+                        conversation.on('message', onLeancloudMessage);
+                        console.log('成功注册消息监听器');
+                    } else {
+                        console.error('会话对象不支持on方法，尝试替代方案');
+                        // 尝试使用其他可能的方法名
+                        if (typeof conversation.onMessage === 'function') {
+                            conversation.onMessage(onLeancloudMessage);
+                            console.log('使用onMessage方法注册监听器');
+                        } else if (typeof conversation.addListener === 'function') {
+                            conversation.addListener('message', onLeancloudMessage);
+                            console.log('使用addListener方法注册监听器');
+                        } else {
+                            console.error('无法注册消息监听器，消息接收可能不工作');
+                            addSystemMessage('警告：可能无法接收跨设备消息');
+                        }
+                    }
+                    
+                    // 监听成员加入
+                    try {
+                        if (typeof conversation.on === 'function') {
+                            conversation.on('membersjoined', function(payload) {
+                                console.log('成员加入事件:', payload);
+                                addSystemMessage(`用户 ${payload.members.join(', ')} 加入了跨设备房间`);
+                            });
+                            
+                            // 监听成员离开
+                            conversation.on('membersleft', function(payload) {
+                                console.log('成员离开事件:', payload);
+                                addSystemMessage(`用户 ${payload.members.join(', ')} 离开了跨设备房间`);
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('设置成员事件监听器失败:', err);
+                    }
+                } catch (err) {
+                    console.error('设置消息监听器时出错:', err);
+                    addSystemMessage('警告：设置消息接收器失败，可能无法接收消息');
+                }
                 
-                // 监听成员加入
-                conversation.on('membersjoined', function(payload) {
-                    console.log('成员加入事件:', payload);
-                    addSystemMessage(`用户 ${payload.members.join(', ')} 加入了跨设备房间`);
-                });
-                
-                // 监听成员离开
-                conversation.on('membersleft', function(payload) {
-                    console.log('成员离开事件:', payload);
-                    addSystemMessage(`用户 ${payload.members.join(', ')} 离开了跨设备房间`);
-                });
-                
-                // 尝试主动加入对话，如果支持join方法
+                // 尝试主动加入对话
                 if (typeof conversation.join === 'function') {
                     console.log('使用join方法加入对话');
                     return conversation.join()
@@ -536,6 +588,21 @@ function connectToLeanCloud(username, roomCode) {
             })
             .then(function() {
                 addSystemMessage('跨设备通信连接成功，现在可以与其他设备通信！');
+                
+                // 发送一条测试广播消息
+                if (conversationInstance && typeof conversationInstance.send === 'function') {
+                    try {
+                        const testMsg = AV.Realtime.TextMessage ? 
+                            new AV.Realtime.TextMessage(`我已加入房间 ${chatRoomId}`) :
+                            { _lctext: `我已加入房间 ${chatRoomId}`, text: `我已加入房间 ${chatRoomId}` };
+                        
+                        conversationInstance.send(testMsg).then(() => {
+                            console.log('发送了入房广播消息');
+                        }).catch(e => console.warn('广播消息发送失败:', e));
+                    } catch(e) {
+                        console.warn('创建广播消息失败:', e);
+                    }
+                }
             })
             .catch(function(error) {
                 clearTimeout(connectionTimeout);
@@ -691,6 +758,15 @@ function receiveMessage(message) {
             return;
         }
         
+        // 增加对消息源的详细记录
+        console.log('消息来源详情:', {
+            from: message.from || '未知',
+            currentUser: chatCurrentUser,
+            messageType: message.type || (message._lctext ? 'text' : message._lcfile ? 'file' : '未知类型'),
+            hasText: !!message.text || !!message._lctext,
+            convId: message.cid || (conversationInstance ? conversationInstance.id : '未知会话'),
+        });
+        
         // 检查消息来源
         if (!message || !message.from) {
             console.warn('收到无效消息或无发送者信息');
@@ -713,6 +789,7 @@ function receiveMessage(message) {
             
             if (messageText) {
                 console.log(`显示文本消息: ${messageText}`);
+                addSystemMessage(`[调试] 收到来自 ${message.from} 的消息: ${messageText}`);
                 addMessage(message.from, messageText, false);
             }
         }
@@ -1070,6 +1147,152 @@ function formatFileSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// 创建调试按钮，方便测试
+function createDebugButtons() {
+    try {
+        // 创建广播测试按钮
+        const broadcastBtn = document.createElement('button');
+        broadcastBtn.innerHTML = '发送广播';
+        broadcastBtn.className = 'debug-button';
+        broadcastBtn.style.position = 'fixed';
+        broadcastBtn.style.top = '10px';
+        broadcastBtn.style.right = '10px';
+        broadcastBtn.style.zIndex = '9999';
+        broadcastBtn.style.background = '#ff5722';
+        broadcastBtn.style.color = 'white';
+        broadcastBtn.style.padding = '5px 10px';
+        broadcastBtn.style.border = 'none';
+        broadcastBtn.style.borderRadius = '4px';
+        broadcastBtn.style.cursor = 'pointer';
+        
+        // 点击发送广播测试消息
+        broadcastBtn.addEventListener('click', function() {
+            broadcastTestMessage();
+        });
+        
+        document.body.appendChild(broadcastBtn);
+        
+        // 创建连接信息按钮
+        const infoBtn = document.createElement('button');
+        infoBtn.innerHTML = '连接信息';
+        infoBtn.className = 'debug-button';
+        infoBtn.style.position = 'fixed';
+        infoBtn.style.top = '10px';
+        infoBtn.style.right = '90px';
+        infoBtn.style.zIndex = '9999';
+        infoBtn.style.background = '#2196f3';
+        infoBtn.style.color = 'white';
+        infoBtn.style.padding = '5px 10px';
+        infoBtn.style.border = 'none';
+        infoBtn.style.borderRadius = '4px';
+        infoBtn.style.cursor = 'pointer';
+        
+        // 点击显示连接信息
+        infoBtn.addEventListener('click', function() {
+            showConnectionInfo();
+        });
+        
+        document.body.appendChild(infoBtn);
+    } catch (e) {
+        console.warn('创建调试按钮失败:', e);
+    }
+}
+
+// 发送广播测试消息
+function broadcastTestMessage() {
+    const testMessage = `测试广播消息 (时间:${new Date().toLocaleTimeString()})`;
+    
+    // 在界面显示
+    addSystemMessage(`正在发送广播测试消息...`);
+    
+    // 尝试使用LeanCloud发送
+    if (isOnline && conversationInstance && typeof conversationInstance.send === 'function') {
+        try {
+            let textMsg;
+            try {
+                if (AV.Realtime.TextMessage) {
+                    textMsg = new AV.Realtime.TextMessage(testMessage);
+                } else if (AV.TextMessage) {
+                    textMsg = new AV.TextMessage(testMessage);
+                } else {
+                    throw new Error('无法创建消息对象');
+                }
+            } catch (e) {
+                console.warn('创建标准消息对象失败，使用自定义对象:', e);
+                textMsg = {
+                    _lctype: -1,
+                    _lctext: testMessage,
+                    text: testMessage,
+                    from: chatCurrentUser
+                };
+            }
+            
+            conversationInstance.send(textMsg)
+                .then(function(msg) {
+                    console.log('广播消息发送成功:', msg);
+                    addSystemMessage('广播消息发送成功！请检查其他设备是否收到');
+                })
+                .catch(function(error) {
+                    console.error('广播消息发送失败:', error);
+                    addSystemMessage('广播消息发送失败: ' + error.message);
+                });
+        } catch (e) {
+            console.error('发送广播消息出错:', e);
+            addSystemMessage('发送广播消息出错: ' + e.message);
+        }
+    } else {
+        addSystemMessage('LeanCloud未连接，无法发送广播消息');
+    }
+    
+    // 同时尝试使用本地通信方式
+    if (window.crossDevicesBridge) {
+        window.crossDevicesBridge.sendText(testMessage);
+    }
+    
+    if (window.chatBridge) {
+        window.chatBridge.sendText(testMessage);
+    }
+}
+
+// 显示连接信息
+function showConnectionInfo() {
+    let info = '连接信息：\n';
+    info += `房间ID: ${chatRoomId || '未加入'}\n`;
+    info += `用户名: ${chatCurrentUser || '未设置'}\n`;
+    info += `在线状态: ${isOnline ? '在线' : '离线'}\n`;
+    
+    if (conversationInstance) {
+        info += `会话ID: ${conversationInstance.id || '未知'}\n`;
+        info += `会话成员: ${(conversationInstance.members || []).join(', ') || '未知'}\n`;
+    }
+    
+    if (client) {
+        info += `客户端ID: ${client.id || '未知'}\n`;
+    }
+    
+    if (window.crossDevicesBridge) {
+        info += `设备ID: ${window.crossDevicesBridge.deviceId || '未知'}\n`;
+    }
+    
+    info += `SDK可用: ${window.AV ? '是' : '否'}\n`;
+    
+    if (window.LC_CONFIG) {
+        info += `AppID: ${window.LC_CONFIG.appId.substring(0, 8)}...\n`;
+    }
+    
+    alert(info);
+    
+    // 同时在控制台输出更详细信息
+    console.log('========== 连接详细信息 ==========');
+    console.log('房间ID:', chatRoomId);
+    console.log('用户名:', chatCurrentUser);
+    console.log('在线状态:', isOnline);
+    console.log('会话实例:', conversationInstance);
+    console.log('客户端实例:', client);
+    console.log('LeanCloud配置:', window.LC_CONFIG);
+    console.log('==================================');
 }
 
 // 初始化
