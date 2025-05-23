@@ -407,10 +407,9 @@ function connectToLeanCloud(username, roomCode) {
                 console.log('已创建客户端:', client.id);
                 updateOnlineStatus(true, '在线（跨设备模式）');
                 
-                // 设置客户端断线监听 - 使用安全的方式
-                try {
-                    // 检查on方法是否存在
-                    if (typeof client.on === 'function') {
+                // 设置客户端断线监听 - 使用安全的方式添加事件监听
+                if (typeof client.on === 'function') {
+                    try {
                         client.on('disconnect', function() {
                             console.warn('客户端连接已断开');
                             addSystemMessage('与跨设备服务器连接断开，尝试重连...');
@@ -427,182 +426,136 @@ function connectToLeanCloud(username, roomCode) {
                             console.error('客户端重连失败:', error);
                             addSystemMessage('重连失败: ' + error.message);
                             updateOnlineStatus(false, '重连失败');
-                            
-                            // 切换到离线模式
                             setupOfflineMode(username, roomCode);
                         });
-                    } else {
-                        console.warn('客户端不支持事件监听 (client.on 方法不存在)');
-                        addSystemMessage('已切换到简单模式，某些自动重连功能可能不可用');
+                    } catch (e) {
+                        console.warn('设置断线监听器失败:', e);
                     }
-                } catch (error) {
-                    console.error('设置事件监听器时出错:', error);
                 }
                 
-                // 确保从标准化的房间ID创建会话
-                var convId = 'ROOM_' + roomCode.padStart(4, '0');
-                addSystemMessage(`尝试加入跨设备房间: ${convId}`);
-                console.log('[重要]尝试加入对话:', convId);
+                // 确保从标准化的房间ID创建会话 - 所有设备使用相同ID
+                var convId = 'GLOBAL_ROOM_' + roomCode;  // 改为固定格式，避免padding问题
+                addSystemMessage(`尝试加入全局房间: ${convId}`);
+                console.log('[重要]尝试加入全局对话:', convId);
                 
                 // 打印房间ID和用户ID信息，方便调试
                 console.log(`[重要]当前房间和用户信息: roomID=${convId}, userID=${username}`);
                 
-                // 查找对话，强制使用指定ID
+                // 获取或创建会话 - 使用固定全局ID
                 return client.getConversation(convId)
                     .then(conversation => {
                         console.log('找到现有对话:', conversation.id);
                         return conversation;
                     })
                     .catch(() => {
-                        // 对话不存在，创建新对话，明确指定ID和唯一性
-                        console.log('对话不存在，创建新对话，明确ID:', convId);
+                        // 对话不存在，创建新的全局共享对话
+                        console.log('对话不存在，创建全局共享对话:', convId);
                         return client.createConversation({
                             name: roomCode,
-                            unique: true,
+                            unique: true,  // 确保全局唯一
                             id: convId,
-                            members: [username]
+                            transient: false,  // 非暂态，持久保存
+                            members: [],  // 不指定初始成员，允许任何人加入
+                            _roomId: roomCode  // 自定义属性，标记为聊天室
                         });
-                    });
-            })
-            .then(function(conversation) {
-                conversationInstance = conversation;
-                
-                // 显示会话ID信息便于调试
-                addSystemMessage(`已获取跨设备房间，会话ID: ${conversation.id}`);
-                console.log('[重要]已获取对话，确认ID:', conversation.id);
-                
-                // 确认自己是否在成员列表中
-                const isMember = conversation.members && 
-                                 conversation.members.indexOf(username) !== -1;
-                
-                // 如果不是成员，尝试加入
-                if (!isMember && typeof conversation.add === 'function') {
-                    console.log('用户不在成员列表中，尝试加入');
-                    return conversation.add([username])
-                        .then(() => {
-                            addSystemMessage('已加入跨设备房间成员列表');
-                            return conversation;
-                        })
-                        .catch(err => {
-                            console.warn('添加成员失败，但继续使用对话:', err);
-                            return conversation;
-                        });
-                }
-                
-                return conversation;
-            })
-            .then(function(conversation) {
-                // 设置消息监听
-                console.log('设置消息监听');
-                
-                // 清除所有现有的监听器
-                try {
-                    if (typeof conversation.off === 'function') {
-                        conversation.off('message'); // 移除所有消息监听器
-                    }
-                    conversation._messageListeners = [];
-                } catch (err) {
-                    console.warn('清除旧监听器失败:', err);
-                }
-                
-                // 添加新的监听器
-                try {
-                    // 监听消息 - 使用命名函数便于调试
-                    function onLeancloudMessage(message) {
-                        console.log('[重要]收到LeanCloud实时消息:', message);
-                        // 为消息添加标识，便于跟踪
-                        if (message) {
-                            message._fromLeanCloud = true;
-                            // 确保消息有来源信息
-                            if (!message.from && message.fromPeerId) {
-                                message.from = message.fromPeerId;
-                            }
-                            receiveMessage(message);
-                        } else {
-                            console.warn('收到空消息对象');
-                        }
-                    }
-                    
-                    // 保存监听器引用
-                    conversation._messageListeners = [onLeancloudMessage];
-                    
-                    // 注册监听器 - 确保使用正确的方法
-                    if (typeof conversation.on === 'function') {
-                        conversation.on('message', onLeancloudMessage);
-                        console.log('成功注册消息监听器');
-                    } else {
-                        console.error('会话对象不支持on方法，尝试替代方案');
-                        // 尝试使用其他可能的方法名
-                        if (typeof conversation.onMessage === 'function') {
-                            conversation.onMessage(onLeancloudMessage);
-                            console.log('使用onMessage方法注册监听器');
-                        } else if (typeof conversation.addListener === 'function') {
-                            conversation.addListener('message', onLeancloudMessage);
-                            console.log('使用addListener方法注册监听器');
-                        } else {
-                            console.error('无法注册消息监听器，消息接收可能不工作');
-                            addSystemMessage('警告：可能无法接收跨设备消息');
-                        }
-                    }
-                    
-                    // 监听成员加入
-                    try {
-                        if (typeof conversation.on === 'function') {
-                            conversation.on('membersjoined', function(payload) {
-                                console.log('成员加入事件:', payload);
-                                addSystemMessage(`用户 ${payload.members.join(', ')} 加入了跨设备房间`);
-                            });
-                            
-                            // 监听成员离开
-                            conversation.on('membersleft', function(payload) {
-                                console.log('成员离开事件:', payload);
-                                addSystemMessage(`用户 ${payload.members.join(', ')} 离开了跨设备房间`);
-                            });
-                        }
-                    } catch (err) {
-                        console.warn('设置成员事件监听器失败:', err);
-                    }
-                } catch (err) {
-                    console.error('设置消息监听器时出错:', err);
-                    addSystemMessage('警告：设置消息接收器失败，可能无法接收消息');
-                }
-                
-                // 尝试主动加入对话
-                if (typeof conversation.join === 'function') {
-                    console.log('使用join方法加入对话');
-                    return conversation.join()
-                        .then(() => {
-                            addSystemMessage('正式加入跨设备房间成功');
-                            // 发送一条测试消息，确保连接正常
-                            return sendTestMessage(conversation)
-                                .then(() => queryHistoryMessages(conversation));
-                        })
-                        .catch(err => {
-                            console.warn('join方法失败:', err);
-                            return queryHistoryMessages(conversation);
-                        });
-                } else {
-                    console.log('对话不支持join方法，查询历史消息');
-                    return queryHistoryMessages(conversation);
-                }
-            })
-            .then(function() {
-                addSystemMessage('跨设备通信连接成功，现在可以与其他设备通信！');
-                
-                // 发送一条测试广播消息
-                if (conversationInstance && typeof conversationInstance.send === 'function') {
-                    try {
-                        const testMsg = AV.Realtime.TextMessage ? 
-                            new AV.Realtime.TextMessage(`我已加入房间 ${chatRoomId}`) :
-                            { _lctext: `我已加入房间 ${chatRoomId}`, text: `我已加入房间 ${chatRoomId}` };
+                    })
+                    .then(conversation => {
+                        conversationInstance = conversation;
                         
-                        conversationInstance.send(testMsg).then(() => {
-                            console.log('发送了入房广播消息');
-                        }).catch(e => console.warn('广播消息发送失败:', e));
-                    } catch(e) {
-                        console.warn('创建广播消息失败:', e);
-                    }
-                }
+                        // 显示会话ID信息
+                        addSystemMessage(`已获取全局房间，会话ID: ${conversation.id}`);
+                        console.log('[重要]已获取对话，确认ID:', conversation.id);
+                        
+                        // 1. 先加入会话
+                        if (typeof conversation.join === 'function') {
+                            return conversation.join()
+                                .then(() => {
+                                    addSystemMessage('已加入全局会话');
+                                    return conversation;
+                                })
+                                .catch(err => {
+                                    console.warn('join方法失败，尝试add方法:', err);
+                                    if (typeof conversation.add === 'function') {
+                                        return conversation.add([username])
+                                            .then(() => {
+                                                addSystemMessage('已通过成员添加方式加入会话');
+                                                return conversation;
+                                            })
+                                            .catch(e => {
+                                                console.warn('add方法失败:', e);
+                                                return conversation;
+                                            });
+                                    }
+                                    return conversation;
+                                });
+                        } else if (typeof conversation.add === 'function') {
+                            return conversation.add([username])
+                                .then(() => {
+                                    addSystemMessage('已加入会话成员列表');
+                                    return conversation;
+                                })
+                                .catch(e => {
+                                    console.warn('add方法失败:', e);
+                                    return conversation;
+                                });
+                        }
+                        
+                        return conversation;
+                    })
+                    .then(conversation => {
+                        // 2. 设置消息监听
+                        try {
+                            // 清除旧监听器
+                            if (typeof conversation.off === 'function') {
+                                conversation.off('message');
+                            }
+                            
+                            // 添加新监听器
+                            function handleMessage(message) {
+                                console.log('[重要]收到服务器消息:', message);
+                                if (message) {
+                                    // 确保消息有来源信息
+                                    if (!message.from && message.fromPeerId) {
+                                        message.from = message.fromPeerId;
+                                    }
+                                    receiveMessage(message);
+                                }
+                            }
+                            
+                            if (typeof conversation.on === 'function') {
+                                conversation.on('message', handleMessage);
+                                console.log('成功注册消息监听器');
+                                
+                                // 监听成员变化
+                                conversation.on('membersjoined', function(payload) {
+                                    addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
+                                });
+                                
+                                conversation.on('membersleft', function(payload) {
+                                    addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
+                                });
+                            } else {
+                                console.error('会话对象不支持on方法，消息接收可能不工作');
+                            }
+                        } catch (e) {
+                            console.error('设置消息监听器失败:', e);
+                        }
+                        
+                        return conversation;
+                    })
+                    .then(conversation => {
+                        // 3. 查询历史消息
+                        return queryHistoryMessages(conversation);
+                    })
+                    .then(() => {
+                        // 4. 发送加入通知
+                        addSystemMessage('全局通信连接成功，现在可以与其他设备通信！');
+                        
+                        // 延时发送加入通知
+                        setTimeout(() => {
+                            broadcastTestMessage(`${username} 已加入全球聊天`);
+                        }, 1000);
+                    });
             })
             .catch(function(error) {
                 clearTimeout(connectionTimeout);
