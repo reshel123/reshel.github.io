@@ -11,250 +11,17 @@
     <!-- 引入跨设备通信桥 -->
     <script src="lib/cross-devices-bridge.js"></script>
     
-    <!-- 直接嵌入LeanCloud SDK到页面中，避免网络加载问题 -->
-    <script>
-    /* 优化的LeanCloud SDK最小化版本 */
-    window.AV = window.AV || {};
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
-    // 基本存储SDK功能模拟
-    AV.init = function(e) {
-        console.log('AV SDK 初始化', e);
-    };
-    AV.Object = function() {};
-    AV.Query = function() {};
-    AV.User = {
-        current: function() { return null; },
-        logIn: function() { return Promise.resolve({}); }
-    };
-    AV.Cloud = {
-        run: function() { return Promise.resolve({}); }
-    };
+    <!-- Firebase配置 -->
+    <script src="firebase-config.js"></script>
     
-    // 消息类型
-    AV.Realtime = {
-        TextMessage: function(text) {
-            this.text = text;
-            this._lctext = text;
-            this._lctype = -1;
-            this.from = '';  // 发送者，将在发送时设置
-            this.getAttributes = function() { return {}; };
-        },
-        FileMessage: function(file) {
-            this.file = file;
-            this._lcfile = file;
-            this._lctype = -2;
-            this.from = '';  // 发送者，将在发送时设置
-            this.getAttributes = function() { return {}; };
-        }
-    };
-    
-    /* 改进的实时通信SDK模拟 */
-    window.Realtime = function(config) {
-        console.log('创建Realtime实例', config);
-        
-        // 保存全局连接信息
-        this.config = config;
-        this.conversations = {};
-        
-        this.createIMClient = function(clientId) {
-            console.log('创建客户端:', clientId);
-            
-            return Promise.resolve({
-                id: clientId,
-                
-                // 获取对话
-                getConversation: function(conversationId) {
-                    console.log('获取对话:', conversationId);
-                    
-                    if (this.conversations && this.conversations[conversationId]) {
-                        return Promise.resolve(this.conversations[conversationId]);
-                    }
-                    
-                    // 对话不存在，抛出错误以触发创建
-                    return Promise.reject(new Error('对话不存在'));
-                }.bind(this),
-                
-                // 创建对话
-                createConversation: function(options) {
-                    const convId = options.name || ('conv_' + Date.now());
-                    console.log('创建对话:', convId, options);
-                    
-                    // 创建新对话
-                    const conversation = {
-                        id: convId,
-                        name: options.name,
-                        unique: options.unique === true,
-                        members: options.members || [],
-                        creator: clientId,
-                        system: {},
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        lastMessageAt: null,
-                        _messageHandlers: [],
-                        _membersJoinedHandlers: [],
-                        _membersLeftHandlers: [],
-                        
-                        // 事件监听
-                        on: function(event, handler) {
-                            console.log('添加事件监听:', event);
-                            if (event === 'message') {
-                                this._messageHandlers.push(handler);
-                            } else if (event === 'membersjoined') {
-                                this._membersJoinedHandlers.push(handler);
-                            } else if (event === 'membersleft') {
-                                this._membersLeftHandlers.push(handler);
-                            }
-                        },
-                        
-                        // 发送消息
-                        send: function(message) {
-                            console.log('发送消息到对话:', this.id);
-                            
-                            // 设置发送者信息
-                            message.from = clientId;
-                            message.cid = this.id;
-                            message.timestamp = Date.now();
-                            
-                            // 模拟延迟发送
-                            return new Promise((resolve) => {
-                                setTimeout(() => {
-                                    this.lastMessageAt = new Date().toISOString();
-                                    resolve(message);
-                                    
-                                    // 模拟将消息发送到其他客户端
-                                    setTimeout(() => {
-                                        // 向该对话的所有其他客户端广播消息
-                                        for (let client of this.members) {
-                                            if (client !== clientId) {
-                                                // 将消息分发到每个客户端的处理器
-                                                if (window._globalMessageHandlers && window._globalMessageHandlers[this.id]) {
-                                                    for (let handler of window._globalMessageHandlers[this.id]) {
-                                                        handler(message);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }, 100);
-                                }, 200);
-                            });
-                        },
-                        
-                        // 查询消息
-                        queryMessages: function(options) {
-                            console.log('查询消息:', options);
-                            return Promise.resolve([]);
-                        },
-                        
-                        // 加入对话
-                        join: function() {
-                            console.log('加入对话:', this.id);
-                            
-                            if (this.members.indexOf(clientId) === -1) {
-                                this.members.push(clientId);
-                                
-                                // 触发成员加入事件
-                                setTimeout(() => {
-                                    for (let handler of this._membersJoinedHandlers) {
-                                        handler({
-                                            members: [clientId]
-                                        });
-                                    }
-                                    
-                                    // 广播给其他成员
-                                    for (let client of this.members) {
-                                        if (client !== clientId && 
-                                            window._globalMembersJoinedHandlers && 
-                                            window._globalMembersJoinedHandlers[this.id]) {
-                                            for (let handler of window._globalMembersJoinedHandlers[this.id]) {
-                                                handler({
-                                                    members: [clientId]
-                                                });
-                                            }
-                                        }
-                                    }
-                                }, 300);
-                            }
-                            
-                            return Promise.resolve(this);
-                        },
-                        
-                        // 退出对话
-                        quit: function() {
-                            console.log('退出对话:', this.id);
-                            
-                            const index = this.members.indexOf(clientId);
-                            if (index !== -1) {
-                                this.members.splice(index, 1);
-                                
-                                // 触发成员离开事件
-                                setTimeout(() => {
-                                    for (let handler of this._membersLeftHandlers) {
-                                        handler({
-                                            members: [clientId]
-                                        });
-                                    }
-                                }, 300);
-                            }
-                            
-                            return Promise.resolve(this);
-                        },
-                        
-                        // 添加成员
-                        add: function(clientIds) {
-                            console.log('添加成员:', clientIds);
-                            
-                            for (let client of clientIds) {
-                                if (this.members.indexOf(client) === -1) {
-                                    this.members.push(client);
-                                }
-                            }
-                            
-                            // 触发成员加入事件
-                            setTimeout(() => {
-                                for (let handler of this._membersJoinedHandlers) {
-                                    handler({
-                                        members: clientIds
-                                    });
-                                }
-                            }, 300);
-                            
-                            return Promise.resolve(this);
-                        }
-                    };
-                    
-                    // 保存会话到全局缓存
-                    if (!this.conversations) this.conversations = {};
-                    this.conversations[convId] = conversation;
-                    
-                    // 设置全局消息处理器
-                    if (!window._globalMessageHandlers) window._globalMessageHandlers = {};
-                    if (!window._globalMembersJoinedHandlers) window._globalMembersJoinedHandlers = {};
-                    if (!window._globalMembersLeftHandlers) window._globalMembersLeftHandlers = {};
-                    
-                    window._globalMessageHandlers[convId] = [];
-                    window._globalMembersJoinedHandlers[convId] = [];
-                    window._globalMembersLeftHandlers[convId] = [];
-                    
-                    return Promise.resolve(conversation);
-                }.bind(this),
-                
-                // 关闭连接
-                close: function() {
-                    console.log('关闭客户端连接');
-                    return Promise.resolve();
-                }
-            });
-        };
-    };
-    
-    /* TypedMessages 插件 */
-    window.TypedMessagesPlugin = {
-        name: "typed-messages"
-    };
-    </script>
-    
-    <!-- LeanCloud配置 -->
-    <script src="leancloud-config.js"></script>
+    <!-- 引入Firebase聊天桥接 -->
+    <script src="lib/firebase-chat-bridge.js"></script>
     
     <!-- 引入本地聊天桥 -->
     <script src="lib/local-chat-bridge.js"></script>
@@ -795,58 +562,216 @@
     
     <!-- LeanCloud SDK 加载 -->
     <script>
+        // 记录SDK加载状态
+        window.SDKLoadingStatus = {
+            firebase: false,
+            firebaseDatabase: false,
+            firebaseStorage: false, 
+            firebaseConfig: false,
+            firebaseChatBridge: false,
+            localBridge: false,
+            crossDevicesBridge: false,
+            chatScript: false
+        };
+
         function updateLoadingStatus(status) {
             document.querySelector('.loading-status').textContent = status;
+            console.log('[加载状态]', status);
         }
 
         function hideLoadingOverlay() {
             document.getElementById('loadingOverlay').classList.add('hidden');
         }
         
-        // 清理旧的消息交换机制，改用local-chat-bridge.js
-        
-        // 只加载本地配置和功能实现脚本，SDK已直接嵌入页面
-        var allScripts = [
-            { src: 'local-chat-bridge.js' },
-            { src: 'leancloud-config.js' },
-            { src: 'room-chat-cn.js' }
-        ];
-
-        var totalScripts = allScripts.length;
-        var loadedScripts = 0;
-
-        function loadScriptSequentially(index) {
-            if (index >= allScripts.length) {
-                console.log('所有脚本加载完成');
-                updateLoadingStatus('所有脚本加载完成，正在初始化...');
+        function checkAllScriptsLoaded() {
+            // 检查必要脚本是否加载完成
+            const requiredScripts = ['firebase', 'firebaseDatabase', 'firebaseConfig', 'firebaseChatBridge', 'chatScript'];
+            const allRequired = requiredScripts.every(script => window.SDKLoadingStatus[script]);
+            
+            if (allRequired) {
+                updateLoadingStatus('所有必要脚本加载完成，正在初始化...');
                 
-                // 在所有脚本加载完成后初始化聊天桥
-                if (window.chatBridge && typeof window.chatBridge.init === 'function') {
-                    window.chatBridge.init();
+                // 初始化聊天桥
+                if (window.firebaseChatBridge && typeof window.firebaseChatBridge.init === 'function') {
+                    window.firebaseChatBridge.init();
                 }
                 
                 setTimeout(function() {
                     hideLoadingOverlay();
                 }, 1000);
-                return;
+                return true;
             }
-
-            var script = document.createElement('script');
-            script.src = allScripts[index].src;
-            script.onload = function() {
-                loadedScripts++;
-                updateLoadingStatus(`脚本 ${loadedScripts}/${totalScripts} 加载成功: ${allScripts[index].src.split('/').pop()}`);
-                loadScriptSequentially(index + 1);
-            };
-            script.onerror = function(error) {
-                updateLoadingStatus(`脚本 ${allScripts[index].src} 加载失败，请刷新页面重试`);
-                console.error('脚本加载失败:', allScripts[index].src, error);
-            };
-            document.head.appendChild(script);
+            return false;
         }
+        
+        function handleScriptError(scriptName, error) {
+            console.error(`脚本 ${scriptName} 加载失败:`, error);
+            updateLoadingStatus(`脚本 ${scriptName} 加载失败，正在重试...`);
+            
+            // 3秒后重试加载
+            setTimeout(() => {
+                loadScript(scriptName, 2); // 重试，最多2次
+            }, 3000);
+        }
+        
+        function loadScript(src, retriesLeft) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                const isExternal = src.startsWith('http');
+                const scriptName = isExternal ? src.split('/').pop() : src;
+                
+                // 如果外部脚本加载失败，尝试本地备份
+                if (isExternal) {
+                    // 准备多个CDN源和本地备份
+                    const cdnMap = {
+                        'firebase-app.js': 'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js',
+                        'firebase-database.js': 'https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js',
+                        'firebase-storage.js': 'https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js',
+                        'firebase-auth.js': 'https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js'
+                    };
+                    
+                    const backupMap = {
+                        'firebase-app.js': './lib/sdk/firebase-app.js',
+                        'firebase-database.js': './lib/sdk/firebase-database.js',
+                        'firebase-storage.js': './lib/sdk/firebase-storage.js',
+                        'firebase-auth.js': './lib/sdk/firebase-auth.js'
+                    };
+                    
+                    for (const [key, cdnUrl] of Object.entries(cdnMap)) {
+                        if (src.includes(key) && retriesLeft === 0) {
+                            // 如果重试次数用完，尝试使用本地备份
+                            console.log(`尝试从本地加载备份脚本: ${key}`);
+                            src = backupMap[key] || src;
+                            break;
+                        }
+                    }
+                }
+                
+                script.src = src;
+                script.onload = function() {
+                    console.log(`脚本 ${scriptName} 加载成功`);
+                    
+                    // 更新加载状态
+                    if (src.includes('firebase-app.js')) {
+                        window.SDKLoadingStatus.firebase = true;
+                        updateLoadingStatus('Firebase核心SDK加载成功');
+                    } else if (src.includes('firebase-database.js')) {
+                        window.SDKLoadingStatus.firebaseDatabase = true;
+                        updateLoadingStatus('Firebase数据库SDK加载成功');
+                    } else if (src.includes('firebase-storage.js')) {
+                        window.SDKLoadingStatus.firebaseStorage = true;
+                        updateLoadingStatus('Firebase存储SDK加载成功');
+                    } else if (src.includes('firebase-config.js')) {
+                        window.SDKLoadingStatus.firebaseConfig = true;
+                        updateLoadingStatus('Firebase配置加载成功');
+                    } else if (src.includes('firebase-chat-bridge.js')) {
+                        window.SDKLoadingStatus.firebaseChatBridge = true;
+                        updateLoadingStatus('Firebase聊天桥加载成功');
+                    } else if (src.includes('local-chat-bridge.js')) {
+                        window.SDKLoadingStatus.localBridge = true;
+                        updateLoadingStatus('本地通信桥加载成功');
+                    } else if (src.includes('cross-devices-bridge.js')) {
+                        window.SDKLoadingStatus.crossDevicesBridge = true;
+                        updateLoadingStatus('跨设备通信桥加载成功');
+                    } else if (src.includes('room-chat-cn.js') || src.includes('room-chat-firebase.js')) {
+                        window.SDKLoadingStatus.chatScript = true;
+                        updateLoadingStatus('聊天功能脚本加载成功');
+                    }
+                    
+                    // 检查是否所有脚本都已加载
+                    checkAllScriptsLoaded();
+                    
+                    resolve();
+                };
+                script.onerror = function(error) {
+                    console.error(`脚本 ${scriptName} 加载失败:`, error);
+                    
+                    if (retriesLeft > 0) {
+                        console.log(`重试加载脚本 ${scriptName}，剩余尝试次数: ${retriesLeft}`);
+                        updateLoadingStatus(`脚本 ${scriptName} 加载失败，正在重试...`);
+                        
+                        // 延迟1秒重试
+                        setTimeout(() => {
+                            loadScript(src, retriesLeft - 1)
+                                .then(resolve)
+                                .catch(reject);
+                        }, 1000);
+                    } else {
+                        updateLoadingStatus(`脚本 ${scriptName} 加载失败，将尝试使用本地备份`);
+                        
+                        // 如果是外部脚本，尝试使用本地备份
+                        if (isExternal) {
+                            // 构建本地备份路径
+                            const localBackup = `./lib/sdk/${scriptName}`;
+                            console.log(`尝试从本地加载: ${localBackup}`);
+                            
+                            loadScript(localBackup, 0)
+                                .then(resolve)
+                                .catch(() => {
+                                    updateLoadingStatus(`无法加载脚本 ${scriptName}，某些功能可能不可用`);
+                                    reject(error);
+                                });
+                        } else {
+                            updateLoadingStatus(`无法加载脚本 ${scriptName}，某些功能可能不可用`);
+                            reject(error);
+                        }
+                    }
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // 按顺序加载必要的脚本
+        async function loadAllScripts() {
+            try {
+                // 设置完整加载超时，防止无限等待
+                setupGlobalTimeout(30000);
+                
+                // 先加载跨设备通信桥
+                await loadScript('lib/cross-devices-bridge.js', 3);
+                
+                // 加载Firebase SDK
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js', 3);
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js', 3);
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js', 3);
+                
+                // 加载配置和聊天桥
+                await loadScript('firebase-config.js', 3);
+                await loadScript('lib/firebase-chat-bridge.js', 3);
+                await loadScript('lib/local-chat-bridge.js', 3);
+                
+                // 最后加载实际功能
+                await loadScript('room-chat-firebase.js', 3);
+                
+                console.log('所有脚本加载完成');
+            } catch (error) {
+                console.error('脚本加载过程中发生错误:', error);
+                updateLoadingStatus('部分脚本加载失败，聊天功能可能受限。');
+                
+                // 即使有错误也尝试显示界面
+                setTimeout(hideLoadingOverlay, 3000);
+            }
+        }
+        
+        // 设置全局超时，确保页面不会无限加载
+        function setupGlobalTimeout(timeout) {
+            setTimeout(() => {
+                if (document.getElementById('loadingOverlay') && 
+                    !document.getElementById('loadingOverlay').classList.contains('hidden')) {
+                    
+                    console.warn(`加载超时(${timeout}ms)，显示当前状态`);
+                    updateLoadingStatus('加载超时，将使用当前可用功能。某些功能可能受限。');
+                    
+                    // 隐藏加载界面
+                    setTimeout(hideLoadingOverlay, 2000);
+                }
+            }, timeout);
+        }
+        
+        // 开始加载脚本
+        loadAllScripts();
 
-        loadScriptSequentially(0);
-
+        // 加入聊天室函数
         function joinChatRoom() {
             const roomCode = document.getElementById('roomCode').value.trim();
             const userName = document.getElementById('userName').value.trim();
@@ -868,7 +793,7 @@
             
             // 保存当前房间ID和用户名到全局，便于本地通信桥使用
             window.currentRoomData = {
-                roomId: 'ROOM_' + roomCode.padStart(4, '0'),
+                roomId: 'GLOBAL_ROOM_' + roomCode.padStart(4, '0'),
                 roomCode: roomCode,
                 userName: userName
             };

@@ -22,10 +22,13 @@ const onlineStatus = document.getElementById('onlineStatus');
 // 初始化
 function initialize() {
     try {
-        // 检查是否有跨设备通信桥
+        console.log('开始初始化聊天功能...');
+        showDebugInfo('正在初始化SDK和通信组件');
+        
+        // 检查跨设备通信桥
         if (window.crossDevicesBridge) {
             console.log('检测到跨设备通信桥，设备ID:', window.crossDevicesBridge.deviceId);
-            addSystemMessage('已启用跨设备通信功能（仅支持同一浏览器不同标签页）');
+            addSystemMessage('已启用跨设备通信功能（仅支持同一网络下的设备）');
             
             // 添加消息处理器
             window.crossDevicesBridge.addMessageHandler(function(message) {
@@ -44,47 +47,78 @@ function initialize() {
             });
             
             isOnline = true;
-            updateOnlineStatus(true, '本地模式（同浏览器）');
+            updateOnlineStatus(true, '本地模式（同网络设备）');
         }
         
-        // 始终尝试初始化LeanCloud，用于真正的跨设备通信
-        if (window.AV && typeof LC_CONFIG !== 'undefined') {
+        // 检查LeanCloud SDK可用性
+        if (typeof AV !== 'undefined' && typeof LC_CONFIG !== 'undefined') {
             console.log('初始化LeanCloud SDK，配置:', LC_CONFIG);
             
             try {
-                // 确保清除任何旧的初始化
-                if (window.AV._appId) {
-                    console.warn('检测到AV已初始化，尝试重置SDK状态');
+                // 显示SDK版本信息
+                if (AV.version) {
+                    console.log('LeanCloud SDK版本:', AV.version);
+                    showDebugInfo(`SDK版本: ${AV.version}`);
                 }
                 
+                // 初始化LeanCloud存储SDK
                 AV.init({
                     appId: LC_CONFIG.appId,
                     appKey: LC_CONFIG.appKey,
                     serverURL: LC_CONFIG.serverURL
                 });
                 
-                // 创建实时通信实例
-                realtime = new window.Realtime({
-                    appId: LC_CONFIG.appId,
-                    appKey: LC_CONFIG.appKey,
-                    server: LC_CONFIG.serverURL ? LC_CONFIG.serverURL.replace('https://', 'wss://') + '/1.2/ws' : null,
-                    plugins: [window.TypedMessagesPlugin]
-                });
+                console.log('存储SDK初始化成功');
                 
-                console.log('LeanCloud实时通信SDK已初始化（用于真正的跨设备通信）');
-                
-                // 检查连接性
-                setTimeout(checkLeancloudConnection, 1000);
-                
-                isOnline = true;
-                updateOnlineStatus(true, '在线模式（支持跨设备）');
+                // 检查实时通信SDK
+                if (typeof Realtime !== 'undefined') {
+                    console.log('找到实时通信SDK，准备初始化');
+                    
+                    // 检查类型化消息插件
+                    const hasTypedMessagesPlugin = typeof TypedMessagesPlugin !== 'undefined';
+                    if (hasTypedMessagesPlugin) {
+                        console.log('找到类型化消息插件');
+                    } else {
+                        console.warn('未找到类型化消息插件，部分高级消息功能可能不可用');
+                    }
+                    
+                    // 创建实时通信实例
+                    realtime = new Realtime({
+                        appId: LC_CONFIG.appId,
+                        appKey: LC_CONFIG.appKey,
+                        server: LC_CONFIG.serverURL ? LC_CONFIG.serverURL.replace('https://', 'wss://') + '/1.2/ws' : null,
+                        plugins: hasTypedMessagesPlugin ? [TypedMessagesPlugin] : []
+                    });
+                    
+                    console.log('LeanCloud SDK初始化成功（使用真实SDK）');
+                    
+                    // 检查连接性
+                    setTimeout(checkLeancloudConnection, 1000);
+                    
+                    isOnline = true;
+                    updateOnlineStatus(true, '在线模式（支持跨设备）');
+                } else {
+                    console.error('未找到实时通信SDK，可能影响跨设备消息传递');
+                    showDebugInfo('警告：未找到实时通信SDK，跨设备功能受限');
+                    
+                    setTimeout(checkLeancloudConnection, 1000);
+                }
             } catch (error) {
                 console.error('初始化LeanCloud SDK失败:', error);
                 addSystemMessage('初始化在线服务失败: ' + error.message);
-                setupMockSDK(); // 设置模拟SDK
+                setupMockSDK(); // 如果失败则回退到模拟SDK
             }
         } else {
-            console.warn('LeanCloud SDK不可用，使用离线模式');
+            if (!window.AV) {
+                console.warn('LeanCloud AV对象不可用，SDK可能未正确加载');
+                showDebugInfo('错误：LeanCloud SDK未正确加载');
+            }
+            if (!LC_CONFIG) {
+                console.warn('LC_CONFIG不可用，配置可能未正确加载');
+                showDebugInfo('错误：LeanCloud配置未加载');
+            }
+            
+            console.warn('LeanCloud SDK不可用或配置缺失，使用离线模式');
             if (!window.crossDevicesBridge) {
                 addSystemMessage('当前处于完全离线模式，仅支持单设备聊天');
                 isOnline = false;
@@ -466,7 +500,7 @@ function connectToLeanCloud(username, roomCode) {
                 console.log('已创建客户端:', client.id);
                 updateOnlineStatus(true, '在线（跨设备模式）');
                 
-                // 设置客户端断线监听 - 使用安全的方式添加事件监听
+                // 设置客户端断线监听
                 if (typeof client.on === 'function') {
                     try {
                         client.on('disconnect', function() {
@@ -500,50 +534,47 @@ function connectToLeanCloud(username, roomCode) {
                 // 打印房间ID和用户ID信息，方便调试
                 console.log(`[重要]当前房间和用户信息: roomID=${convId}, userID=${username}`);
                 
-                // 获取或创建会话 - 使用聊天室模式
-                console.log('[重要]尝试创建全局聊天室:', convId);
+                // 直接使用createConversation并设置transient=true来创建聊天室
                 return client.createConversation({
                     name: 'Global_' + roomCode,
                     transient: true,  // 设置为聊天室模式，不需要维护成员，所有人可加入
                     id: convId,       // 明确指定ID
-                    unique: false,     // 可以重复创建
-                    members: [username]  // 将当前用户作为初始成员
+                    unique: false,    // 允许重复创建
                 }).then(chatRoom => {
                     console.log('成功创建/获取全局聊天室:', chatRoom.id);
                     showDebugInfo(`聊天室ID: ${chatRoom.id}, 成员数: ${chatRoom.members ? chatRoom.members.length : '未知'}`);
-                    if (chatRoom.members && chatRoom.members.length > 0) {
-                        showDebugInfo(`聊天室成员: ${chatRoom.members.join(', ')}`);
-                    }
-                    return chatRoom;  
-                }).catch(err => {
-                    console.warn('创建聊天室失败，尝试常规会话:', err);
-                    // 如果创建聊天室失败，尝试获取已有会话
+                    
+                    return chatRoom;
+                }).catch(error => {
+                    console.warn('创建聊天室失败，尝试获取已有会话:', error);
+                    
+                    // 如果创建失败，尝试获取已有会话
                     return client.getConversation(convId)
                         .then(conversation => {
                             console.log('找到现有对话:', conversation.id);
                             return conversation;
                         })
                         .catch(() => {
-                            // 最后尝试创建普通会话但设置为开放所有人
+                            // 最后尝试创建普通会话，但设置为transient
                             console.log('创建通用会话，设为公开:', convId);
                             return client.createConversation({
                                 name: 'Room_' + roomCode,
                                 unique: true,  // 确保唯一
                                 id: convId,
-                                transient: true,  // 尝试设置为聊天室
-                                members: [],   // 不指定初始成员
+                                transient: true,  // 尝试设置为聊天室模式
+                                members: [username]  // 添加当前用户作为成员
                             });
                         });
                 });
             })
-            .then(conversation => {
+            .then(function(conversation) {
                 conversationInstance = conversation;
                 
                 // 显示会话ID信息
                 addSystemMessage(`已获取全局房间，会话ID: ${conversation.id}`);
                 console.log('[重要]已获取对话，确认ID:', conversation.id);
                 
-                // 1. 先加入会话
+                // 加入会话
                 if (typeof conversation.join === 'function') {
                     return conversation.join()
                         .then(() => {
@@ -551,43 +582,22 @@ function connectToLeanCloud(username, roomCode) {
                             return conversation;
                         })
                         .catch(err => {
-                            console.warn('join方法失败，尝试add方法:', err);
-                            if (typeof conversation.add === 'function') {
-                                return conversation.add([username])
-                                    .then(() => {
-                                        addSystemMessage('已通过成员添加方式加入会话');
-                                        return conversation;
-                                    })
-                                    .catch(e => {
-                                        console.warn('add方法失败:', e);
-                                        return conversation;
-                                    });
-                            }
-                            return conversation;
-                        });
-                } else if (typeof conversation.add === 'function') {
-                    return conversation.add([username])
-                        .then(() => {
-                            addSystemMessage('已加入会话成员列表');
-                            return conversation;
-                        })
-                        .catch(e => {
-                            console.warn('add方法失败:', e);
+                            console.warn('join方法失败:', err);
                             return conversation;
                         });
                 }
                 
                 return conversation;
             })
-            .then(conversation => {
-                // 2. 设置消息监听
+            .then(function(conversation) {
+                // 设置消息监听
                 try {
                     // 清除旧监听器
                     if (typeof conversation.off === 'function') {
                         conversation.off('message');
                     }
                     
-                    // 重新设置消息监听
+                    // 添加新监听器
                     const messageHandler = function(message) {
                         console.log('[重要]收到服务器消息:', message);
                         if (message) {
@@ -603,7 +613,7 @@ function connectToLeanCloud(username, roomCode) {
                     if (typeof conversation.on === 'function') {
                         conversation.on('message', messageHandler);
                         console.log('成功注册消息监听器');
-                        showDebugInfo('重连：成功设置了消息监听器');
+                        showDebugInfo('成功设置了消息监听器');
                         
                         // 监听成员加入/离开
                         conversation.on('membersjoined', function(payload) {
@@ -615,7 +625,7 @@ function connectToLeanCloud(username, roomCode) {
                         });
                     } else {
                         console.error('会话对象不支持on方法，消息接收可能不工作');
-                        showDebugInfo('重连：警告：无法注册消息监听器，消息接收可能不可用');
+                        showDebugInfo('警告：无法注册消息监听器，消息接收可能不可用');
                     }
                 } catch (e) {
                     console.error('设置消息监听器失败:', e);
@@ -625,11 +635,11 @@ function connectToLeanCloud(username, roomCode) {
                 return conversation;
             })
             .then(conversation => {
-                // 3. 查询历史消息
+                // 查询历史消息
                 return queryHistoryMessages(conversation);
             })
             .then(() => {
-                // 4. 发送加入通知
+                // 发送加入通知
                 addSystemMessage('全局通信连接成功，现在可以与其他设备通信！');
                 
                 // 延时发送加入通知
@@ -877,84 +887,84 @@ function sendMessage() {
     // 在UI中显示消息
     addMessage(chatCurrentUser, message, true);
     
-    // 优先通过LeanCloud发送消息（真正的跨设备通信）
+    // 通过LeanCloud发送消息（跨设备通信）
     let leanCloudSent = false;
     if (isOnline && conversationInstance) {
         try {
             console.log('通过LeanCloud发送消息:', message);
             showDebugInfo(`开始通过LeanCloud发送(会话ID: ${conversationInstance.id})`);
             
-            // 安全检查SDK可用性
-            if (window.AV && window.AV.Realtime) {
-                // 安全检查TextMessage构造函数
-                let textMsg;
-                if (window.AV.Realtime.TextMessage) {
-                    textMsg = new AV.Realtime.TextMessage(message);
-                    showDebugInfo('使用AV.Realtime.TextMessage创建消息');
-                } else if (AV.TextMessage) {
-                    textMsg = new AV.TextMessage(message);
-                    showDebugInfo('使用AV.TextMessage创建消息');
-                } else {
-                    throw new Error('TextMessage构造函数不可用');
-                }
-                
-                // 安全检查send方法
-                if (typeof conversationInstance.send === 'function') {
-                    conversationInstance.send(textMsg)
-                        .then(function(msgInstance) {
-                            console.log('LeanCloud消息发送成功:', msgInstance);
-                            showDebugInfo(`LeanCloud消息发送成功: ID=${msgInstance.id}`);
-                            leanCloudSent = true;
-                        })
-                        .catch(function(error) {
-                            console.error('LeanCloud发送消息失败:', error);
-                            showDebugInfo(`LeanCloud发送失败: ${error.message}`);
-                            addSystemMessage('跨设备消息发送失败');
-                        });
-                } else {
-                    throw new Error('conversation.send 方法不可用');
-                }
+            // 创建简单的消息对象
+            let textMsg = {
+                text: message,
+                _lctext: message,
+                _lctype: -1, // 标准文本消息类型
+                from: chatCurrentUser
+            };
+            
+            // 发送消息
+            if (typeof conversationInstance.send === 'function') {
+                conversationInstance.send(textMsg)
+                    .then(function(msgInstance) {
+                        console.log('LeanCloud消息发送成功:', msgInstance);
+                        showDebugInfo(`LeanCloud消息发送成功: ID=${msgInstance.id || '未知'}`);
+                        leanCloudSent = true;
+                    })
+                    .catch(function(error) {
+                        console.error('LeanCloud发送消息失败:', error);
+                        showDebugInfo(`LeanCloud发送失败: ${error.message}`);
+                        addSystemMessage('跨设备消息发送失败: ' + error.message);
+                        
+                        // 如果LeanCloud发送失败，尝试通过本地桥发送
+                        sendViaLocalBridges(message);
+                    });
             } else {
-                throw new Error('AV SDK不完整');
+                throw new Error('会话对象不支持send方法');
             }
         } catch (error) {
             console.error('发送LeanCloud消息时出错:', error);
             showDebugInfo(`LeanCloud发送异常: ${error.message}`);
             addSystemMessage(`跨设备发送出错: ${error.message}`);
+            
+            // 如果出现异常，尝试通过本地桥发送
+            sendViaLocalBridges(message);
         }
     } else {
-        console.warn('LeanCloud未连接，无法进行跨设备通信');
-        showDebugInfo('LeanCloud未连接，跳过跨设备发送');
+        console.warn('LeanCloud未连接，尝试通过本地通信桥发送');
+        showDebugInfo('LeanCloud未连接，尝试通过本地桥发送');
+        
+        // 通过本地桥发送
+        sendViaLocalBridges(message);
     }
+}
+
+// 通过本地通信桥发送消息
+function sendViaLocalBridges(text) {
+    let localSent = false;
     
-    // 同时通过跨设备通信桥发送（同一浏览器不同标签页）
-    let crossDeviceSent = false;
+    // 通过跨设备通信桥发送（同一浏览器不同标签页）
     if (window.crossDevicesBridge) {
         try {
-            crossDeviceSent = window.crossDevicesBridge.sendText(message);
-            console.log('[调试] 通过跨设备通信桥发送消息:', crossDeviceSent);
+            localSent = window.crossDevicesBridge.sendText(text);
+            console.log('[调试] 通过跨设备通信桥发送消息:', localSent);
         } catch (e) {
             console.error('跨设备通信桥发送失败:', e);
         }
-    } else {
-        console.warn('[调试] crossDevicesBridge不可用');
     }
     
-    // 然后尝试通过本地通信桥发送
-    let localBridgeSent = false;
+    // 通过本地通信桥发送
     if (window.chatBridge) {
         try {
-            localBridgeSent = window.chatBridge.sendText(message);
-            console.log('[调试] 通过本地通信桥发送消息:', localBridgeSent);
+            const bridgeSent = window.chatBridge.sendText(text);
+            localSent = localSent || bridgeSent;
+            console.log('[调试] 通过本地通信桥发送消息:', bridgeSent);
         } catch (e) {
             console.error('本地通信桥发送失败:', e);
         }
-    } else {
-        console.warn('[调试] chatBridge不可用');
     }
     
     // 如果所有方式都失败，显示错误
-    if (!localBridgeSent && !crossDeviceSent && !isOnline) {
+    if (!localSent) {
         addSystemMessage('消息发送失败：所有通信方式均不可用');
     }
 }
@@ -1276,8 +1286,10 @@ function createDebugButtons() {
 }
 
 // 发送广播测试消息
-function broadcastTestMessage() {
-    const testMessage = `测试广播消息 (时间:${new Date().toLocaleTimeString()})`;
+function broadcastTestMessage(testMessage) {
+    if (!testMessage) {
+        testMessage = `测试广播消息 (时间:${new Date().toLocaleTimeString()})`;
+    }
     
     // 在界面显示
     addSystemMessage(`正在发送广播测试消息...`);
@@ -1286,24 +1298,13 @@ function broadcastTestMessage() {
     // 尝试使用LeanCloud发送
     if (isOnline && conversationInstance && typeof conversationInstance.send === 'function') {
         try {
-            let textMsg;
-            try {
-                if (AV.Realtime.TextMessage) {
-                    textMsg = new AV.Realtime.TextMessage(testMessage);
-                } else if (AV.TextMessage) {
-                    textMsg = new AV.TextMessage(testMessage);
-                } else {
-                    throw new Error('无法创建消息对象');
-                }
-            } catch (e) {
-                console.warn('创建标准消息对象失败，使用自定义对象:', e);
-                textMsg = {
-                    _lctype: -1,
-                    _lctext: testMessage,
-                    text: testMessage,
-                    from: chatCurrentUser
-                };
-            }
+            // 创建简单的消息对象，不依赖特定的TextMessage类
+            const textMsg = {
+                _lctype: -1,
+                _lctext: testMessage,
+                text: testMessage,
+                from: chatCurrentUser
+            };
             
             conversationInstance.send(textMsg)
                 .then(function(msg) {
