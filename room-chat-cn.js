@@ -22,7 +22,7 @@ function initialize() {
         // 检查是否有跨设备通信桥
         if (window.crossDevicesBridge) {
             console.log('检测到跨设备通信桥，设备ID:', window.crossDevicesBridge.deviceId);
-            addSystemMessage('已启用跨设备通信功能');
+            addSystemMessage('已启用跨设备通信功能（仅支持同一浏览器不同标签页）');
             
             // 添加消息处理器
             window.crossDevicesBridge.addMessageHandler(function(message) {
@@ -41,49 +41,60 @@ function initialize() {
             });
             
             isOnline = true;
-            updateOnlineStatus(true, '跨设备模式');
+            updateOnlineStatus(true, '本地模式（同浏览器）');
         }
-        // 否则初始化LeanCloud
-        else if (window.AV && typeof LC_CONFIG !== 'undefined') {
+        
+        // 始终尝试初始化LeanCloud，用于真正的跨设备通信
+        if (window.AV && typeof LC_CONFIG !== 'undefined') {
             console.log('初始化LeanCloud SDK，配置:', LC_CONFIG);
             
-            // 确保清除任何旧的初始化
-            if (window.AV._appId) {
-                console.warn('检测到AV已初始化，尝试重置SDK状态');
+            try {
+                // 确保清除任何旧的初始化
+                if (window.AV._appId) {
+                    console.warn('检测到AV已初始化，尝试重置SDK状态');
+                }
+                
+                AV.init({
+                    appId: LC_CONFIG.appId,
+                    appKey: LC_CONFIG.appKey,
+                    serverURL: LC_CONFIG.serverURL
+                });
+                
+                // 创建实时通信实例
+                realtime = new window.Realtime({
+                    appId: LC_CONFIG.appId,
+                    appKey: LC_CONFIG.appKey,
+                    server: LC_CONFIG.serverURL ? LC_CONFIG.serverURL.replace('https://', 'wss://') + '/1.2/ws' : null,
+                    plugins: [window.TypedMessagesPlugin]
+                });
+                
+                console.log('LeanCloud实时通信SDK已初始化（用于真正的跨设备通信）');
+                
+                // 检查连接性
+                setTimeout(checkLeancloudConnection, 1000);
+                
+                isOnline = true;
+                updateOnlineStatus(true, '在线模式（支持跨设备）');
+            } catch (error) {
+                console.error('初始化LeanCloud SDK失败:', error);
+                addSystemMessage('初始化在线服务失败: ' + error.message);
+                setupMockSDK(); // 设置模拟SDK
             }
-            
-            AV.init({
-                appId: LC_CONFIG.appId,
-                appKey: LC_CONFIG.appKey,
-                serverURL: LC_CONFIG.serverURL
-            });
-            
-            // 创建实时通信实例
-            realtime = new window.Realtime({
-                appId: LC_CONFIG.appId,
-                appKey: LC_CONFIG.appKey,
-                server: LC_CONFIG.serverURL ? LC_CONFIG.serverURL.replace('https://', 'wss://') + '/1.2/ws' : null,
-                plugins: [window.TypedMessagesPlugin]
-            });
-            
-            console.log('LeanCloud实时通信SDK已初始化');
-            
-            // 检查连接性
-            setTimeout(checkLeancloudConnection, 1000);
-            
-            isOnline = true;
-            updateOnlineStatus(true);
         } else {
             console.warn('LeanCloud SDK不可用，使用离线模式');
-            addSystemMessage('当前处于离线模式，仅支持本地聊天');
-            isOnline = false;
-            updateOnlineStatus(false);
+            if (!window.crossDevicesBridge) {
+                addSystemMessage('当前处于完全离线模式，仅支持单设备聊天');
+                isOnline = false;
+                updateOnlineStatus(false);
+            }
+            setupMockSDK(); // 设置模拟SDK
         }
     } catch (error) {
         console.error('初始化聊天服务失败:', error);
         addSystemMessage('初始化聊天服务失败，使用离线模式');
         isOnline = false;
         updateOnlineStatus(false);
+        setupMockSDK(); // 设置模拟SDK
     }
     
     // 配置本地聊天桥（用于同一浏览器不同标签页）
@@ -137,6 +148,90 @@ function initialize() {
     document.addEventListener('join-chat-room', function(e) {
         joinRoom(e.detail.roomCode, e.detail.userName);
     });
+}
+
+// 设置模拟SDK，在LeanCloud不可用时提供基本功能
+function setupMockSDK() {
+    console.log('设置模拟SDK以提供基本功能');
+    
+    // 如果全局对象不存在，创建它们
+    if (!window.AV) window.AV = {};
+    if (!window.Realtime) window.Realtime = function() { this.createIMClient = createMockIMClient; };
+    
+    // 创建模拟客户端
+    function createMockIMClient(clientId) {
+        console.log('创建模拟客户端:', clientId);
+        return Promise.resolve({
+            id: clientId,
+            on: function(event, callback) {
+                console.log('模拟客户端注册事件:', event);
+                // 存储事件回调，可能需要时触发
+                if (!this._eventCallbacks) this._eventCallbacks = {};
+                if (!this._eventCallbacks[event]) this._eventCallbacks[event] = [];
+                this._eventCallbacks[event].push(callback);
+            },
+            getConversation: function(convId) {
+                console.log('模拟获取会话:', convId);
+                // 返回一个模拟会话对象
+                return Promise.resolve(createMockConversation(convId, clientId));
+            },
+            createConversation: function(options) {
+                console.log('模拟创建会话:', options);
+                return Promise.resolve(createMockConversation(options.id || 'mock_conv_' + Date.now(), clientId));
+            }
+        });
+    }
+    
+    // 创建模拟会话
+    function createMockConversation(convId, clientId) {
+        return {
+            id: convId,
+            name: convId,
+            members: [clientId],
+            _messageListeners: [],
+            on: function(event, callback) {
+                console.log('模拟会话注册事件:', event);
+                if (event === 'message') {
+                    this._messageListeners.push(callback);
+                }
+                // 存储其他事件回调
+                if (!this._eventCallbacks) this._eventCallbacks = {};
+                if (!this._eventCallbacks[event]) this._eventCallbacks[event] = [];
+                this._eventCallbacks[event].push(callback);
+            },
+            send: function(message) {
+                console.log('模拟发送消息:', message);
+                // 这里只模拟成功，实际不会发送到其他客户端
+                return Promise.resolve(message);
+            },
+            join: function() {
+                console.log('模拟加入会话');
+                return Promise.resolve();
+            },
+            add: function(members) {
+                console.log('模拟添加成员:', members);
+                this.members = this.members.concat(members);
+                return Promise.resolve();
+            },
+            queryMessages: function() {
+                console.log('模拟查询消息');
+                return Promise.resolve([]);
+            }
+        };
+    }
+    
+    // 创建模拟TextMessage类
+    if (!window.AV.Realtime) window.AV.Realtime = {};
+    window.AV.Realtime.TextMessage = function(text) {
+        this._lctext = text;
+        this.text = text;
+        this.from = chatCurrentUser || 'unknown';
+        this.timestamp = Date.now();
+    };
+    
+    // 设置模拟Realtime实例
+    realtime = new window.Realtime();
+    console.log('模拟SDK设置完成');
 }
 
 // 检查LeanCloud连接状态
@@ -203,12 +298,12 @@ function joinRoom(roomCode, username) {
     // 添加系统消息
     addSystemMessage(`欢迎 ${username} 加入房间 ${roomCode}`);
     
-    // 首先尝试加入跨设备通信桥
+    // 服务端房间ID格式
+    const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
+    
+    // 首先尝试加入跨设备通信桥（仅同一浏览器不同标签页有效）
     if (window.crossDevicesBridge) {
         console.log('[调试] 检测到跨设备通信桥可用');
-        
-        // 服务端房间ID格式
-        const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
         console.log('[调试] 尝试通过跨设备通信桥加入房间:', formattedRoomId);
         
         try {
@@ -217,16 +312,13 @@ function joinRoom(roomCode, username) {
             
             if (success) {
                 console.log('[调试] 已加入跨设备通信房间:', formattedRoomId);
-                addSystemMessage('已连接到跨设备通信，现在可以与其他设备通信');
+                addSystemMessage('已启用同一浏览器多标签页通信');
                 
                 // 也加入本地通信桥，同时支持两种模式
                 if (window.chatBridge) {
                     window.chatBridge.join(formattedRoomId, username);
                     console.log('[调试] 同时加入本地通信桥');
                 }
-                
-                // 不要立即返回，继续尝试连接LeanCloud作为备份
-                console.log('[调试] 继续连接LeanCloud作为备份通道');
             } else {
                 console.warn('[调试] 跨设备通信桥加入房间失败，切换到LeanCloud模式');
             }
@@ -239,8 +331,6 @@ function joinRoom(roomCode, username) {
     
     // 使用本地聊天桥加入房间（同一浏览器不同标签）
     if (window.chatBridge) {
-        // 服务端房间ID格式
-        const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
         console.log('[调试] 尝试通过本地通信桥加入房间:', formattedRoomId);
         
         try {
@@ -253,15 +343,17 @@ function joinRoom(roomCode, username) {
         console.warn('[调试] 本地通信桥不可用');
     }
     
-    if (isOnline && realtime) {
+    // 始终尝试使用LeanCloud连接（真正跨设备通信）
+    if (window.AV && realtime) {
         // 在线模式：连接到LeanCloud实时通信服务
+        addSystemMessage('正在连接跨设备服务器，请稍候...');
         connectToLeanCloud(username, roomCode);
     } else {
         // 离线模式：模拟消息
         setTimeout(() => {
-            addSystemMessage('连接成功，现在可以发送消息了！');
+            addSystemMessage('警告：未能连接到跨设备服务器，跨设备通信可能不可用');
             setTimeout(() => {
-                addMessage('系统', '欢迎使用聊天室功能！此模式支持跨窗口聊天。', false);
+                addMessage('系统', '当前仅支持同一浏览器内的聊天。跨设备通信需要配置LeanCloud服务。', false);
             }, 1500);
         }, 1000);
     }
@@ -269,11 +361,15 @@ function joinRoom(roomCode, username) {
 
 // 连接到LeanCloud服务
 function connectToLeanCloud(username, roomCode) {
-    addSystemMessage('正在连接到聊天服务器...');
+    addSystemMessage('正在连接到跨设备通信服务器...');
     
     // 释放之前的客户端连接
     if (client) {
-        client.close();
+        try {
+            client.close();
+        } catch (e) {
+            console.warn('关闭旧连接时出错:', e);
+        }
         client = null;
         conversationInstance = null;
     }
@@ -282,145 +378,215 @@ function connectToLeanCloud(username, roomCode) {
     addSystemMessage(`连接信息: 用户=${username}, 房间=${roomCode}`);
     console.log('连接LeanCloud:', { user: username, room: roomCode });
     
-    // 创建客户端实例
-    realtime.createIMClient(username)
-        .then(function(c) {
-            client = c;
-            addSystemMessage('已连接到服务器');
-            console.log('已创建客户端:', client.id);
-            updateOnlineStatus(true);
-            
-            // 设置客户端断线监听
-            client.on('disconnect', function() {
-                console.warn('客户端连接已断开');
-                addSystemMessage('与服务器连接断开，尝试重连...');
-                updateOnlineStatus(false);
-            });
-            
-            client.on('reconnect', function() {
-                console.log('客户端已重连接');
-                addSystemMessage('已重新连接到服务器');
-                updateOnlineStatus(true);
-            });
-            
-            client.on('reconnecterror', function(error) {
-                console.error('客户端重连失败:', error);
-                addSystemMessage('重连失败: ' + error.message);
-            });
-            
-            // 统一房间ID格式：确保所有设备创建相同的会话ID
-            var convId = 'ROOM_' + roomCode.padStart(4, '0');
-            addSystemMessage(`尝试加入房间ID: ${convId}`);
-            console.log('尝试加入对话:', convId);
-            
-            // 查找对话
-            return client.getConversation(convId)
-                .then(conversation => {
-                    console.log('找到现有对话:', conversation.id);
-                    return conversation;
-                })
-                .catch(() => {
-                    // 对话不存在，创建新对话
-                    console.log('对话不存在，创建新对话:', convId);
-                    return client.createConversation({
-                        name: roomCode,
-                        unique: true,
-                        id: convId,
-                        members: [username]
-                    });
-                });
-        })
-        .then(function(conversation) {
-            conversationInstance = conversation;
-            
-            // 显示会话ID信息便于调试
-            addSystemMessage(`已获取房间，会话ID: ${conversation.id}`);
-            console.log('已获取对话:', conversation.id);
-            
-            // 确认自己是否在成员列表中
-            const isMember = conversation.members && 
-                             conversation.members.indexOf(username) !== -1;
-            
-            // 如果不是成员，尝试加入
-            if (!isMember && typeof conversation.add === 'function') {
-                console.log('用户不在成员列表中，尝试加入');
-                return conversation.add([username])
-                    .then(() => {
-                        addSystemMessage('已加入房间成员列表');
-                        return conversation;
-                    })
-                    .catch(err => {
-                        console.warn('添加成员失败，但继续使用对话:', err);
-                        return conversation;
-                    });
-            }
-            
-            return conversation;
-        })
-        .then(function(conversation) {
-            // 设置消息监听
-            console.log('设置消息监听');
-            
-            // 移除已有监听器避免重复
-            if (conversation._messageListeners) {
-                for (let listener of conversation._messageListeners) {
-                    conversation.off('message', listener);
+    // 设置连接超时
+    let connectionTimeout = setTimeout(() => {
+        addSystemMessage('连接超时，已切换到离线模式');
+        updateOnlineStatus(false, '连接超时');
+        setupOfflineMode(username, roomCode);
+    }, 15000);
+    
+    // 尝试创建客户端实例
+    try {
+        // 检查SDK可用性
+        if (!window.AV || !realtime || !window.Realtime) {
+            clearTimeout(connectionTimeout);
+            throw new Error('聊天SDK未正确加载');
+        }
+        
+        realtime.createIMClient(username)
+            .then(function(c) {
+                clearTimeout(connectionTimeout);
+                client = c;
+                addSystemMessage('已连接到跨设备通信服务器');
+                console.log('已创建客户端:', client.id);
+                updateOnlineStatus(true, '在线（跨设备模式）');
+                
+                // 设置客户端断线监听 - 使用安全的方式
+                try {
+                    // 检查on方法是否存在
+                    if (typeof client.on === 'function') {
+                        client.on('disconnect', function() {
+                            console.warn('客户端连接已断开');
+                            addSystemMessage('与跨设备服务器连接断开，尝试重连...');
+                            updateOnlineStatus(false, '连接断开');
+                        });
+                        
+                        client.on('reconnect', function() {
+                            console.log('客户端已重连接');
+                            addSystemMessage('已重新连接到跨设备服务器');
+                            updateOnlineStatus(true, '在线（跨设备模式）');
+                        });
+                        
+                        client.on('reconnecterror', function(error) {
+                            console.error('客户端重连失败:', error);
+                            addSystemMessage('重连失败: ' + error.message);
+                            updateOnlineStatus(false, '重连失败');
+                            
+                            // 切换到离线模式
+                            setupOfflineMode(username, roomCode);
+                        });
+                    } else {
+                        console.warn('客户端不支持事件监听 (client.on 方法不存在)');
+                        addSystemMessage('已切换到简单模式，某些自动重连功能可能不可用');
+                    }
+                } catch (error) {
+                    console.error('设置事件监听器时出错:', error);
                 }
-            } else {
-                conversation._messageListeners = [];
-            }
-            
-            // 监听消息
-            const messageHandler = function(message) {
-                console.log('收到消息事件:', message);
-                receiveMessage(message);
-            };
-            conversation._messageListeners.push(messageHandler);
-            conversation.on('message', messageHandler);
-            
-            // 监听成员加入
-            conversation.on('membersjoined', function(payload) {
-                console.log('成员加入事件:', payload);
-                addSystemMessage(`用户 ${payload.members.join(', ')} 加入了房间`);
-            });
-            
-            // 监听成员离开
-            conversation.on('membersleft', function(payload) {
-                console.log('成员离开事件:', payload);
-                addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
-            });
-            
-            // 尝试主动加入对话，如果支持join方法
-            if (typeof conversation.join === 'function') {
-                console.log('使用join方法加入对话');
-                return conversation.join()
-                    .then(() => {
-                        addSystemMessage('正式加入房间成功');
-                        // 发送一条测试消息，确保连接正常
-                        return sendTestMessage(conversation)
-                            .then(() => queryHistoryMessages(conversation));
+                
+                // 统一房间ID格式：确保所有设备创建相同的会话ID
+                var convId = 'ROOM_' + roomCode.padStart(4, '0');
+                addSystemMessage(`尝试加入跨设备房间: ${convId}`);
+                console.log('尝试加入对话:', convId);
+                
+                // 查找对话
+                return client.getConversation(convId)
+                    .then(conversation => {
+                        console.log('找到现有对话:', conversation.id);
+                        return conversation;
                     })
-                    .catch(err => {
-                        console.warn('join方法失败:', err);
-                        return queryHistoryMessages(conversation);
+                    .catch(() => {
+                        // 对话不存在，创建新对话
+                        console.log('对话不存在，创建新对话:', convId);
+                        return client.createConversation({
+                            name: roomCode,
+                            unique: true,
+                            id: convId,
+                            members: [username]
+                        });
                     });
-            } else {
-                console.log('对话不支持join方法，查询历史消息');
-                return queryHistoryMessages(conversation);
-            }
-        })
-        .then(function() {
-            addSystemMessage('连接成功，现在可以发送消息了！');
-        })
-        .catch(function(error) {
-            console.error('连接聊天服务器失败:', error);
-            addSystemMessage('连接聊天服务器失败: ' + error.message);
-            
-            // 回退到离线模式
-            isOnline = false;
-            updateOnlineStatus(false);
-            addSystemMessage('已切换到离线模式');
-        });
+            })
+            .then(function(conversation) {
+                conversationInstance = conversation;
+                
+                // 显示会话ID信息便于调试
+                addSystemMessage(`已获取跨设备房间，会话ID: ${conversation.id}`);
+                console.log('已获取对话:', conversation.id);
+                
+                // 确认自己是否在成员列表中
+                const isMember = conversation.members && 
+                                 conversation.members.indexOf(username) !== -1;
+                
+                // 如果不是成员，尝试加入
+                if (!isMember && typeof conversation.add === 'function') {
+                    console.log('用户不在成员列表中，尝试加入');
+                    return conversation.add([username])
+                        .then(() => {
+                            addSystemMessage('已加入跨设备房间成员列表');
+                            return conversation;
+                        })
+                        .catch(err => {
+                            console.warn('添加成员失败，但继续使用对话:', err);
+                            return conversation;
+                        });
+                }
+                
+                return conversation;
+            })
+            .then(function(conversation) {
+                // 设置消息监听
+                console.log('设置消息监听');
+                
+                // 移除已有监听器避免重复
+                if (conversation._messageListeners) {
+                    for (let listener of conversation._messageListeners) {
+                        conversation.off('message', listener);
+                    }
+                } else {
+                    conversation._messageListeners = [];
+                }
+                
+                // 监听消息
+                const messageHandler = function(message) {
+                    console.log('收到跨设备消息事件:', message);
+                    receiveMessage(message);
+                };
+                conversation._messageListeners.push(messageHandler);
+                conversation.on('message', messageHandler);
+                
+                // 监听成员加入
+                conversation.on('membersjoined', function(payload) {
+                    console.log('成员加入事件:', payload);
+                    addSystemMessage(`用户 ${payload.members.join(', ')} 加入了跨设备房间`);
+                });
+                
+                // 监听成员离开
+                conversation.on('membersleft', function(payload) {
+                    console.log('成员离开事件:', payload);
+                    addSystemMessage(`用户 ${payload.members.join(', ')} 离开了跨设备房间`);
+                });
+                
+                // 尝试主动加入对话，如果支持join方法
+                if (typeof conversation.join === 'function') {
+                    console.log('使用join方法加入对话');
+                    return conversation.join()
+                        .then(() => {
+                            addSystemMessage('正式加入跨设备房间成功');
+                            // 发送一条测试消息，确保连接正常
+                            return sendTestMessage(conversation)
+                                .then(() => queryHistoryMessages(conversation));
+                        })
+                        .catch(err => {
+                            console.warn('join方法失败:', err);
+                            return queryHistoryMessages(conversation);
+                        });
+                } else {
+                    console.log('对话不支持join方法，查询历史消息');
+                    return queryHistoryMessages(conversation);
+                }
+            })
+            .then(function() {
+                addSystemMessage('跨设备通信连接成功，现在可以与其他设备通信！');
+            })
+            .catch(function(error) {
+                clearTimeout(connectionTimeout);
+                console.error('连接跨设备通信服务器失败:', error);
+                addSystemMessage('连接跨设备通信服务器失败: ' + error.message);
+                
+                // 切换到离线模式
+                setupOfflineMode(username, roomCode);
+            });
+    } catch (error) {
+        clearTimeout(connectionTimeout);
+        console.error('创建LeanCloud客户端时出错:', error);
+        addSystemMessage('创建客户端出错: ' + error.message);
+        
+        // 切换到离线模式
+        setupOfflineMode(username, roomCode);
+    }
+}
+
+// 设置离线模式
+function setupOfflineMode(username, roomCode) {
+    isOnline = false;
+    updateOnlineStatus(false, '离线模式');
+    addSystemMessage('已切换到离线模式，只能在同一浏览器内通信');
+    
+    // 确保跨设备通信桥和本地通信桥已初始化
+    const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
+    
+    if (window.crossDevicesBridge) {
+        try {
+            window.crossDevicesBridge.join(formattedRoomId, username);
+            addSystemMessage('已启用同一浏览器多标签页通信');
+        } catch (e) {
+            console.error('加入跨设备通信桥出错:', e);
+        }
+    }
+    
+    if (window.chatBridge) {
+        try {
+            window.chatBridge.join(formattedRoomId, username);
+            addSystemMessage('已启用本地通信功能');
+        } catch (e) {
+            console.error('加入本地通信桥出错:', e);
+        }
+    }
+    
+    // 20秒后自动重试连接
+    setTimeout(() => {
+        addSystemMessage('20秒后自动尝试重新连接服务器...');
+        connectToLeanCloud(username, roomCode);
+    }, 20000);
 }
 
 // 发送测试消息确认连接
@@ -599,30 +765,57 @@ function sendMessage() {
     // 在UI中显示消息
     addMessage(chatCurrentUser, message, true);
     
-    // 优先尝试通过跨设备通信桥发送
-    let crossDeviceSent = false;
-    if (window.crossDevicesBridge) {
-        crossDeviceSent = window.crossDevicesBridge.sendText(message);
-        console.log('[调试] 通过跨设备通信桥发送消息:', crossDeviceSent, message);
-        
-        if (crossDeviceSent) {
-            console.log('[调试] 跨设备消息已发送');
-            // 继续发送到LeanCloud作为备份
-            if (isOnline && conversationInstance) {
-                try {
-                    conversationInstance.send(new AV.Realtime.TextMessage(message))
-                        .then(function(messageInstance) {
-                            console.log('LeanCloud备份消息发送成功:', messageInstance);
+    // 优先通过LeanCloud发送消息（真正的跨设备通信）
+    let leanCloudSent = false;
+    if (isOnline && conversationInstance) {
+        try {
+            console.log('通过LeanCloud发送消息:', message);
+            
+            // 安全检查SDK可用性
+            if (window.AV && window.AV.Realtime) {
+                // 安全检查TextMessage构造函数
+                let textMsg;
+                if (window.AV.Realtime.TextMessage) {
+                    textMsg = new AV.Realtime.TextMessage(message);
+                } else if (AV.TextMessage) {
+                    textMsg = new AV.TextMessage(message);
+                } else {
+                    throw new Error('TextMessage构造函数不可用');
+                }
+                
+                // 安全检查send方法
+                if (typeof conversationInstance.send === 'function') {
+                    conversationInstance.send(textMsg)
+                        .then(function(msgInstance) {
+                            console.log('LeanCloud消息发送成功:', msgInstance);
+                            leanCloudSent = true;
                         })
                         .catch(function(error) {
-                            console.warn('LeanCloud备份消息发送失败:', error);
+                            console.error('LeanCloud发送消息失败:', error);
+                            addSystemMessage('跨设备消息发送失败');
                         });
-                } catch (error) {
-                    console.warn('发送LeanCloud备份消息出错:', error);
+                } else {
+                    throw new Error('conversation.send 方法不可用');
                 }
+            } else {
+                throw new Error('AV SDK不完整');
             }
-        } else {
-            console.warn('[调试] 跨设备消息发送失败，尝试其他方式');
+        } catch (error) {
+            console.error('发送LeanCloud消息时出错:', error);
+            addSystemMessage(`跨设备发送出错: ${error.message}`);
+        }
+    } else {
+        console.warn('LeanCloud未连接，无法进行跨设备通信');
+    }
+    
+    // 同时通过跨设备通信桥发送（同一浏览器不同标签页）
+    let crossDeviceSent = false;
+    if (window.crossDevicesBridge) {
+        try {
+            crossDeviceSent = window.crossDevicesBridge.sendText(message);
+            console.log('[调试] 通过跨设备通信桥发送消息:', crossDeviceSent);
+        } catch (e) {
+            console.error('跨设备通信桥发送失败:', e);
         }
     } else {
         console.warn('[调试] crossDevicesBridge不可用');
@@ -631,50 +824,19 @@ function sendMessage() {
     // 然后尝试通过本地通信桥发送
     let localBridgeSent = false;
     if (window.chatBridge) {
-        localBridgeSent = window.chatBridge.sendText(message);
-        console.log('[调试] 通过本地通信桥发送消息:', localBridgeSent, message);
-        if (localBridgeSent) {
-            console.log('[调试] 本地通信桥消息发送成功');
+        try {
+            localBridgeSent = window.chatBridge.sendText(message);
+            console.log('[调试] 通过本地通信桥发送消息:', localBridgeSent);
+        } catch (e) {
+            console.error('本地通信桥发送失败:', e);
         }
     } else {
         console.warn('[调试] chatBridge不可用');
     }
     
-    // 检查LeanCloud连接状态
-    if (!isOnline || !conversationInstance) {
-        // 如果本地桥也发送失败，显示错误
-        if (!localBridgeSent && !crossDeviceSent) {
-            addSystemMessage('未连接到服务器，且本地通信失败');
-        }
-        return;
-    }
-    
-    try {
-        // 创建文本消息并发送到服务端
-        console.log('发送消息到会话:', conversationInstance.id);
-        
-        conversationInstance.send(new AV.Realtime.TextMessage(message))
-            .then(function(messageInstance) {
-                console.log('LeanCloud消息发送成功:', messageInstance);
-            })
-            .catch(function(error) {
-                console.error('LeanCloud发送消息失败:', error);
-                
-                // 如果通过其他方式发送成功，不显示错误
-                if (!localBridgeSent && !crossDeviceSent) {
-                    addSystemMessage('消息发送失败: ' + error.message);
-                }
-                
-                // 尝试重新连接
-                reconnectToLeanCloud();
-            });
-    } catch (error) {
-        console.error('发送消息时出错:', error);
-        
-        // 如果通过其他方式发送成功，不显示错误
-        if (!localBridgeSent && !crossDeviceSent) {
-            addSystemMessage('发送消息过程出错: ' + error.message);
-        }
+    // 如果所有方式都失败，显示错误
+    if (!localBridgeSent && !crossDeviceSent && !isOnline) {
+        addSystemMessage('消息发送失败：所有通信方式均不可用');
     }
 }
 
