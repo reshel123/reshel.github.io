@@ -19,8 +19,39 @@ const onlineStatus = document.getElementById('onlineStatus');
 // 初始化
 function initialize() {
     try {
-        // 初始化LeanCloud
-        if (window.AV && typeof LC_CONFIG !== 'undefined') {
+        // 检查是否有跨设备通信桥
+        if (window.crossDevicesBridge) {
+            console.log('检测到跨设备通信桥，设备ID:', window.crossDevicesBridge.deviceId);
+            addSystemMessage('已启用跨设备通信功能');
+            
+            // 添加消息处理器
+            window.crossDevicesBridge.addMessageHandler(function(message) {
+                console.log('收到跨设备消息:', message);
+                receiveMessage(message);
+            });
+            
+            // 添加在线状态处理器
+            window.crossDevicesBridge.addPresenceHandler(function(presence) {
+                console.log('收到跨设备在线状态:', presence);
+                if (presence.type === 'join') {
+                    addSystemMessage(`用户 ${presence.user} 加入了房间`);
+                } else if (presence.type === 'leave') {
+                    addSystemMessage(`用户 ${presence.user} 离开了房间`);
+                }
+            });
+            
+            isOnline = true;
+            updateOnlineStatus(true, '跨设备模式');
+        }
+        // 否则初始化LeanCloud
+        else if (window.AV && typeof LC_CONFIG !== 'undefined') {
+            console.log('初始化LeanCloud SDK，配置:', LC_CONFIG);
+            
+            // 确保清除任何旧的初始化
+            if (window.AV._appId) {
+                console.warn('检测到AV已初始化，尝试重置SDK状态');
+            }
+            
             AV.init({
                 appId: LC_CONFIG.appId,
                 appKey: LC_CONFIG.appKey,
@@ -35,10 +66,16 @@ function initialize() {
                 plugins: [window.TypedMessagesPlugin]
             });
             
+            console.log('LeanCloud实时通信SDK已初始化');
+            
+            // 检查连接性
+            setTimeout(checkLeancloudConnection, 1000);
+            
             isOnline = true;
             updateOnlineStatus(true);
         } else {
-            addSystemMessage('当前处于离线模式，仅支持模拟聊天');
+            console.warn('LeanCloud SDK不可用，使用离线模式');
+            addSystemMessage('当前处于离线模式，仅支持本地聊天');
             isOnline = false;
             updateOnlineStatus(false);
         }
@@ -49,7 +86,7 @@ function initialize() {
         updateOnlineStatus(false);
     }
     
-    // 配置聊天桥
+    // 配置本地聊天桥（用于同一浏览器不同标签页）
     if (window.chatBridge) {
         // 添加消息处理器
         window.chatBridge.addMessageHandler(function(message) {
@@ -68,6 +105,12 @@ function initialize() {
                 addSystemMessage(`用户 ${presence.user} 离开了房间`);
             }
         });
+        
+        // 初始化本地通信桥
+        if (typeof window.chatBridge.init === 'function') {
+            window.chatBridge.init();
+            console.log('本地通信桥已初始化');
+        }
     }
     
     // 启用加入房间按钮
@@ -96,11 +139,36 @@ function initialize() {
     });
 }
 
+// 检查LeanCloud连接状态
+function checkLeancloudConnection() {
+    if (!window.AV || !realtime) {
+        console.warn('LeanCloud SDK未初始化，无法检查连接');
+        isOnline = false;
+        updateOnlineStatus(false);
+        return;
+    }
+    
+    // 创建一个临时客户端检查连接
+    realtime.createIMClient('connection_test_' + Date.now())
+        .then(tempClient => {
+            console.log('LeanCloud连接检查成功');
+            tempClient.close();
+            isOnline = true;
+            updateOnlineStatus(true);
+        })
+        .catch(err => {
+            console.error('LeanCloud连接检查失败:', err);
+            addSystemMessage('与聊天服务器连接失败，切换到离线模式');
+            isOnline = false;
+            updateOnlineStatus(false);
+        });
+}
+
 // 更新在线状态显示
-function updateOnlineStatus(online) {
+function updateOnlineStatus(online, mode) {
     if (onlineStatus) {
         if (online) {
-            onlineStatus.textContent = '在线模式';
+            onlineStatus.textContent = mode || '在线模式';
             onlineStatus.style.color = '#4caf50';
         } else {
             onlineStatus.textContent = '离线模式';
@@ -142,14 +210,29 @@ function joinRoom(roomCode, username) {
         window.messageInput = chatInputElement; // 全局保存引用，便于其他函数使用
     }
     
-    // 使用聊天桥加入房间
+    // 首先尝试加入跨设备通信桥
+    if (window.crossDevicesBridge) {
+        // 服务端房间ID格式
+        const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
+        const success = window.crossDevicesBridge.join(formattedRoomId, username);
+        
+        if (success) {
+            console.log('已加入跨设备通信房间:', formattedRoomId);
+            addSystemMessage('已连接到跨设备通信，现在可以与其他设备通信');
+            return; // 不再需要LeanCloud模式
+        } else {
+            console.warn('跨设备通信桥加入房间失败，尝试回退到其他通信方式');
+        }
+    }
+    
+    // 使用本地聊天桥加入房间（同一浏览器不同标签）
     if (window.chatBridge) {
         // 服务端房间ID格式
         const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
         window.chatBridge.join(formattedRoomId, username);
     }
     
-    if (isOnline) {
+    if (isOnline && realtime) {
         // 在线模式：连接到LeanCloud实时通信服务
         connectToLeanCloud(username, roomCode);
     } else {
@@ -186,6 +269,24 @@ function connectToLeanCloud(username, roomCode) {
             console.log('已创建客户端:', client.id);
             updateOnlineStatus(true);
             
+            // 设置客户端断线监听
+            client.on('disconnect', function() {
+                console.warn('客户端连接已断开');
+                addSystemMessage('与服务器连接断开，尝试重连...');
+                updateOnlineStatus(false);
+            });
+            
+            client.on('reconnect', function() {
+                console.log('客户端已重连接');
+                addSystemMessage('已重新连接到服务器');
+                updateOnlineStatus(true);
+            });
+            
+            client.on('reconnecterror', function(error) {
+                console.error('客户端重连失败:', error);
+                addSystemMessage('重连失败: ' + error.message);
+            });
+            
             // 统一房间ID格式：确保所有设备创建相同的会话ID
             var convId = 'ROOM_' + roomCode.padStart(4, '0');
             addSystemMessage(`尝试加入房间ID: ${convId}`);
@@ -201,8 +302,9 @@ function connectToLeanCloud(username, roomCode) {
                     // 对话不存在，创建新对话
                     console.log('对话不存在，创建新对话:', convId);
                     return client.createConversation({
-                        name: convId,
+                        name: roomCode,
                         unique: true,
+                        id: convId,
                         members: [username]
                     });
                 });
@@ -238,11 +340,22 @@ function connectToLeanCloud(username, roomCode) {
             // 设置消息监听
             console.log('设置消息监听');
             
+            // 移除已有监听器避免重复
+            if (conversation._messageListeners) {
+                for (let listener of conversation._messageListeners) {
+                    conversation.off('message', listener);
+                }
+            } else {
+                conversation._messageListeners = [];
+            }
+            
             // 监听消息
-            conversation.on('message', function(message) {
+            const messageHandler = function(message) {
                 console.log('收到消息事件:', message);
                 receiveMessage(message);
-            });
+            };
+            conversation._messageListeners.push(messageHandler);
+            conversation.on('message', messageHandler);
             
             // 监听成员加入
             conversation.on('membersjoined', function(payload) {
@@ -262,7 +375,9 @@ function connectToLeanCloud(username, roomCode) {
                 return conversation.join()
                     .then(() => {
                         addSystemMessage('正式加入房间成功');
-                        return queryHistoryMessages(conversation);
+                        // 发送一条测试消息，确保连接正常
+                        return sendTestMessage(conversation)
+                            .then(() => queryHistoryMessages(conversation));
                     })
                     .catch(err => {
                         console.warn('join方法失败:', err);
@@ -287,6 +402,31 @@ function connectToLeanCloud(username, roomCode) {
         });
 }
 
+// 发送测试消息确认连接
+function sendTestMessage(conversation) {
+    console.log('发送测试消息以确认连接');
+    
+    try {
+        if (!conversation || typeof conversation.send !== 'function') {
+            return Promise.resolve();
+        }
+        
+        // 创建特殊系统消息
+        return conversation.send(new AV.Realtime.TextMessage('__system_test__'))
+            .then(function() {
+                console.log('测试消息发送成功');
+                return Promise.resolve();
+            })
+            .catch(function(error) {
+                console.warn('测试消息发送失败:', error);
+                return Promise.resolve();
+            });
+    } catch (e) {
+        console.error('发送测试消息出错:', e);
+        return Promise.resolve();
+    }
+}
+
 // 查询历史消息
 function queryHistoryMessages(conversation) {
     console.log('查询历史消息');
@@ -302,6 +442,10 @@ function queryHistoryMessages(conversation) {
                 if (messages && messages.length > 0) {
                     addSystemMessage(`加载最近的消息: ${messages.length}条`);
                     messages.reverse().forEach(function(message) {
+                        // 忽略系统测试消息
+                        if (message._lctext === '__system_test__') {
+                            return;
+                        }
                         receiveMessage(message);
                     });
                 } else {
@@ -322,6 +466,10 @@ function queryHistoryMessages(conversation) {
                 if (messages && messages.length > 0) {
                     addSystemMessage(`加载最近的消息: ${messages.length}条`);
                     messages.reverse().forEach(function(message) {
+                        // 忽略系统测试消息
+                        if (message._lctext === '__system_test__') {
+                            return;
+                        }
                         receiveMessage(message);
                     });
                 } else {
@@ -350,6 +498,12 @@ function receiveMessage(message) {
     console.log('收到消息对象:', message);
     
     try {
+        // 忽略系统测试消息
+        if (message._lctext === '__system_test__') {
+            console.log('跳过系统测试消息');
+            return;
+        }
+        
         // 检查消息来源
         if (!message || !message.from) {
             console.warn('收到无效消息或无发送者信息');
@@ -424,17 +578,27 @@ function sendMessage() {
     // 在UI中显示消息
     addMessage(chatCurrentUser, message, true);
     
-    // 通过聊天桥发送消息
-    let bridgeSent = false;
-    if (window.chatBridge) {
-        bridgeSent = window.chatBridge.sendText(message);
-        console.log('通过本地通信桥发送消息:', bridgeSent);
+    // 优先尝试通过跨设备通信桥发送
+    let crossDeviceSent = false;
+    if (window.crossDevicesBridge) {
+        crossDeviceSent = window.crossDevicesBridge.sendText(message);
+        console.log('通过跨设备通信桥发送消息:', crossDeviceSent);
+        if (crossDeviceSent) {
+            return; // 消息已成功发送，不需要继续
+        }
     }
     
-    // 检查连接状态
+    // 然后尝试通过本地通信桥发送
+    let localBridgeSent = false;
+    if (window.chatBridge) {
+        localBridgeSent = window.chatBridge.sendText(message);
+        console.log('通过本地通信桥发送消息:', localBridgeSent);
+    }
+    
+    // 检查LeanCloud连接状态
     if (!isOnline || !conversationInstance) {
-        // 如果桥发送失败，显示错误
-        if (!bridgeSent) {
+        // 如果本地桥也发送失败，显示错误
+        if (!localBridgeSent && !crossDeviceSent) {
             addSystemMessage('未连接到服务器，且本地通信失败');
         }
         return;
@@ -451,8 +615,8 @@ function sendMessage() {
             .catch(function(error) {
                 console.error('发送消息失败:', error);
                 
-                // 如果通过Leancloud发送失败，但通过本地桥已发送，不显示错误
-                if (!bridgeSent) {
+                // 如果通过其他方式发送成功，不显示错误
+                if (!localBridgeSent && !crossDeviceSent) {
                     addSystemMessage('消息发送失败: ' + error.message);
                 }
                 
@@ -462,8 +626,8 @@ function sendMessage() {
     } catch (error) {
         console.error('发送消息时出错:', error);
         
-        // 如果通过Leancloud发送失败，但通过本地桥已发送，不显示错误
-        if (!bridgeSent) {
+        // 如果通过其他方式发送成功，不显示错误
+        if (!localBridgeSent && !crossDeviceSent) {
             addSystemMessage('发送消息过程出错: ' + error.message);
         }
     }
@@ -499,6 +663,19 @@ function reconnectToLeanCloud() {
                 addSystemMessage('已重新连接到服务器');
                 updateOnlineStatus(true);
                 
+                // 设置客户端断线监听
+                client.on('disconnect', function() {
+                    console.warn('客户端连接已断开');
+                    addSystemMessage('与服务器连接断开');
+                    updateOnlineStatus(false);
+                });
+                
+                client.on('reconnect', function() {
+                    console.log('客户端已重连接');
+                    addSystemMessage('已重新连接到服务器');
+                    updateOnlineStatus(true);
+                });
+                
                 // 获取当前房间ID - 使用存储的值
                 const roomCode = chatRoomId;
                 const convId = 'ROOM_' + roomCode.padStart(4, '0');
@@ -509,8 +686,9 @@ function reconnectToLeanCloud() {
                     .catch(err => {
                         console.error('尝试获取会话失败，创建新会话:', err);
                         return client.createConversation({
-                            name: convId,
+                            name: roomCode,
                             unique: true,
+                            id: convId,
                             members: [chatCurrentUser]
                         });
                     });
@@ -520,10 +698,21 @@ function reconnectToLeanCloud() {
                 addSystemMessage('已重新加入房间');
                 console.log('已重新加入会话:', conversation.id);
                 
+                // 移除已有监听器避免重复
+                if (conversation._messageListeners) {
+                    for (let listener of conversation._messageListeners) {
+                        conversation.off('message', listener);
+                    }
+                } else {
+                    conversation._messageListeners = [];
+                }
+                
                 // 重新设置消息监听
-                conversation.on('message', function(message) {
+                const messageHandler = function(message) {
                     receiveMessage(message);
-                });
+                };
+                conversation._messageListeners.push(messageHandler);
+                conversation.on('message', messageHandler);
                 
                 // 监听成员加入
                 conversation.on('membersjoined', function(payload) {
@@ -535,7 +724,11 @@ function reconnectToLeanCloud() {
                     addSystemMessage(`用户 ${payload.members.join(', ')} 离开了房间`);
                 });
                 
-                resolve(conversation);
+                // 发送测试消息确认连接
+                return sendTestMessage(conversation)
+                    .then(() => {
+                        resolve(conversation);
+                    });
             })
             .catch(function(error) {
                 console.error('重新连接失败:', error);

@@ -8,6 +8,9 @@
     <link rel="shortcut icon" href="icon.jpg" type="image/jpeg">
     <link rel="stylesheet" href="style.css">
     
+    <!-- 引入跨设备通信桥 -->
+    <script src="lib/cross-devices-bridge.js"></script>
+    
     <!-- 直接嵌入LeanCloud SDK到页面中，避免网络加载问题 -->
     <script>
     /* 优化的LeanCloud SDK最小化版本 */
@@ -249,6 +252,12 @@
         name: "typed-messages"
     };
     </script>
+    
+    <!-- LeanCloud配置 -->
+    <script src="leancloud-config.js"></script>
+    
+    <!-- 引入本地聊天桥 -->
+    <script src="lib/local-chat-bridge.js"></script>
     
     <style>
         /* 全局样式 - 添加背景图到整个页面 */
