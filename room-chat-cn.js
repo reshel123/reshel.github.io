@@ -179,7 +179,7 @@ function updateOnlineStatus(online, mode) {
 
 // 加入房间
 function joinRoom(roomCode, username) {
-    console.log(`尝试加入房间: ${roomCode}, 用户名: ${username}`);
+    console.log(`[调试] 尝试加入房间: ${roomCode}, 用户名: ${username}`);
     
     // 存储当前用户信息
     chatCurrentUser = username;
@@ -203,33 +203,53 @@ function joinRoom(roomCode, username) {
     // 添加系统消息
     addSystemMessage(`欢迎 ${username} 加入房间 ${roomCode}`);
     
-    // 重置聊天元素引用，确保使用正确的DOM元素
-    const chatInputElement = document.getElementById('userInput');
-    const messageInput = document.getElementById('messageInput');
-    if (!messageInput && chatInputElement) {
-        window.messageInput = chatInputElement; // 全局保存引用，便于其他函数使用
-    }
-    
     // 首先尝试加入跨设备通信桥
     if (window.crossDevicesBridge) {
+        console.log('[调试] 检测到跨设备通信桥可用');
+        
         // 服务端房间ID格式
         const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
-        const success = window.crossDevicesBridge.join(formattedRoomId, username);
+        console.log('[调试] 尝试通过跨设备通信桥加入房间:', formattedRoomId);
         
-        if (success) {
-            console.log('已加入跨设备通信房间:', formattedRoomId);
-            addSystemMessage('已连接到跨设备通信，现在可以与其他设备通信');
-            return; // 不再需要LeanCloud模式
-        } else {
-            console.warn('跨设备通信桥加入房间失败，尝试回退到其他通信方式');
+        try {
+            const success = window.crossDevicesBridge.join(formattedRoomId, username);
+            console.log('[调试] 跨设备通信桥加入结果:', success);
+            
+            if (success) {
+                console.log('[调试] 已加入跨设备通信房间:', formattedRoomId);
+                addSystemMessage('已连接到跨设备通信，现在可以与其他设备通信');
+                
+                // 也加入本地通信桥，同时支持两种模式
+                if (window.chatBridge) {
+                    window.chatBridge.join(formattedRoomId, username);
+                    console.log('[调试] 同时加入本地通信桥');
+                }
+                
+                return; // 不再需要LeanCloud模式
+            } else {
+                console.warn('[调试] 跨设备通信桥加入房间失败，尝试回退到其他通信方式');
+            }
+        } catch (e) {
+            console.error('[调试] 加入跨设备通信桥出错:', e);
         }
+    } else {
+        console.warn('[调试] 跨设备通信桥不可用');
     }
     
     // 使用本地聊天桥加入房间（同一浏览器不同标签）
     if (window.chatBridge) {
         // 服务端房间ID格式
         const formattedRoomId = 'ROOM_' + roomCode.padStart(4, '0');
-        window.chatBridge.join(formattedRoomId, username);
+        console.log('[调试] 尝试通过本地通信桥加入房间:', formattedRoomId);
+        
+        try {
+            const success = window.chatBridge.join(formattedRoomId, username);
+            console.log('[调试] 本地通信桥加入结果:', success);
+        } catch (e) {
+            console.error('[调试] 加入本地通信桥出错:', e);
+        }
+    } else {
+        console.warn('[调试] 本地通信桥不可用');
     }
     
     if (isOnline && realtime) {
@@ -582,17 +602,28 @@ function sendMessage() {
     let crossDeviceSent = false;
     if (window.crossDevicesBridge) {
         crossDeviceSent = window.crossDevicesBridge.sendText(message);
-        console.log('通过跨设备通信桥发送消息:', crossDeviceSent);
+        console.log('[调试] 通过跨设备通信桥发送消息:', crossDeviceSent, message);
+        
         if (crossDeviceSent) {
+            console.log('[调试] 跨设备消息已发送，不需要其他通道');
             return; // 消息已成功发送，不需要继续
+        } else {
+            console.warn('[调试] 跨设备消息发送失败，尝试其他方式');
         }
+    } else {
+        console.warn('[调试] crossDevicesBridge不可用');
     }
     
     // 然后尝试通过本地通信桥发送
     let localBridgeSent = false;
     if (window.chatBridge) {
         localBridgeSent = window.chatBridge.sendText(message);
-        console.log('通过本地通信桥发送消息:', localBridgeSent);
+        console.log('[调试] 通过本地通信桥发送消息:', localBridgeSent, message);
+        if (localBridgeSent) {
+            console.log('[调试] 本地通信桥消息发送成功');
+        }
+    } else {
+        console.warn('[调试] chatBridge不可用');
     }
     
     // 检查LeanCloud连接状态
@@ -610,10 +641,10 @@ function sendMessage() {
         
         conversationInstance.send(new AV.Realtime.TextMessage(message))
             .then(function(messageInstance) {
-                console.log('消息发送成功:', messageInstance);
+                console.log('LeanCloud消息发送成功:', messageInstance);
             })
             .catch(function(error) {
-                console.error('发送消息失败:', error);
+                console.error('LeanCloud发送消息失败:', error);
                 
                 // 如果通过其他方式发送成功，不显示错误
                 if (!localBridgeSent && !crossDeviceSent) {
