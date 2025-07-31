@@ -1089,6 +1089,18 @@
             img.src = 'erd.jpg';
         }
         
+        // 快速预加载背景图片（用于返回时）
+        function quickPreloadBackgroundImage() {
+            const img = new Image();
+            img.onload = function() {
+                document.body.classList.add('loaded');
+            };
+            img.onerror = function() {
+                console.log('背景图片加载失败，使用默认渐变背景');
+            };
+            img.src = 'erd.jpg';
+        }
+        
         // 隐藏加载屏幕
         function hideLoadingScreen() {
             // 停止加载时音乐播放
@@ -1118,7 +1130,8 @@
                 if (loadingScreen) {
                     loadingScreen.style.display = 'none';
                 }
-                document.body.classList.add('loaded');
+                // 快速预加载背景图片，不显示加载动画
+                quickPreloadBackgroundImage();
             } else {
                 // 正常访问，显示加载页面
                 // 初始化加载时音乐播放器
