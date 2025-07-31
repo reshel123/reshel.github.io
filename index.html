@@ -51,7 +51,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #667eea 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -65,12 +65,14 @@
         }
         
         .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid #ffffff;
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #ffd700;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 1.2s linear infinite;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+            margin-left: 50px;
         }
         
         @keyframes spin {
@@ -80,9 +82,75 @@
         
         .loading-text {
             color: white;
-            margin-top: 20px;
-            font-size: 16px;
+            margin-top: 15px;
+            font-size: 18px;
             text-align: center;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        
+        .loading-countdown {
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .loading-music {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+        }
+        
+        .loading-music h4 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 0;
+        }
+        
+        .loading-music-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .loading-music-btn {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.25));
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .loading-music-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .loading-music-info {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            margin-top: 12px;
+            text-align: center;
+            font-weight: 400;
         }
         
         /* 浮动粒子效果 */
@@ -708,8 +776,20 @@
     <!-- 加载屏幕 -->
     <div class="loading-screen" id="loadingScreen">
         <div style="text-align: center;">
+            <div class="loading-countdown" id="loadingCountdown">大约九十秒</div>
+            
             <div class="loading-spinner"></div>
             <div class="loading-text">正在加载精彩内容...</div>
+            
+            <!-- 加载时音乐播放器 -->
+            <div class="loading-music">
+                <div class="loading-music-controls">
+                    <button class="loading-music-btn" id="loadingPlayBtn">▶️ 播放</button>
+                    <button class="loading-music-btn" id="loadingPauseBtn" style="display: none;">⏸️ 暂停</button>
+                </div>
+                <h4>🎵 等待时听听音乐</h4>
+                <div class="loading-music-info" id="loadingMusicInfo">恶作剧 - 王蓝茵</div>
+            </div>
         </div>
     </div>
     
@@ -894,6 +974,66 @@
             document.getElementById('languageSwitch').textContent = lang.languageButton;
         }
         
+        // 加载时音乐播放器
+        let loadingAudio = null;
+        let loadingIsPlaying = false;
+        
+        // 初始化加载时音乐播放器
+        function initLoadingMusicPlayer() {
+            loadingAudio = new Audio('https://music.163.com/song/media/outer/url?id=399347079.mp3');
+            loadingAudio.preload = 'metadata';
+            
+            const loadingPlayBtn = document.getElementById('loadingPlayBtn');
+            const loadingPauseBtn = document.getElementById('loadingPauseBtn');
+            const loadingMusicInfo = document.getElementById('loadingMusicInfo');
+            
+            loadingPlayBtn.addEventListener('click', function() {
+                if (!loadingIsPlaying) {
+                    loadingAudio.play().then(() => {
+                        loadingIsPlaying = true;
+                        loadingPlayBtn.style.display = 'none';
+                        loadingPauseBtn.style.display = 'inline-block';
+                    }).catch(error => {
+                        console.error('加载时音乐播放失败:', error);
+                        loadingMusicInfo.textContent = '音乐播放失败';
+                    });
+                }
+            });
+            
+            loadingPauseBtn.addEventListener('click', function() {
+                if (loadingIsPlaying) {
+                    loadingAudio.pause();
+                    loadingIsPlaying = false;
+                    loadingPlayBtn.style.display = 'inline-block';
+                    loadingPauseBtn.style.display = 'none';
+                }
+            });
+            
+            loadingAudio.addEventListener('loadedmetadata', function() {
+                loadingMusicInfo.textContent = '恶作剧 - 王蓝茵';
+            });
+            
+            loadingAudio.addEventListener('error', function() {
+                loadingMusicInfo.textContent = '音乐加载失败';
+            });
+        }
+        
+        // 倒计时函数
+        function startCountdown() {
+            let seconds = 90;
+            const countdownElement = document.getElementById('loadingCountdown');
+            
+            const countdownInterval = setInterval(() => {
+                seconds--;
+                if (seconds > 0) {
+                    countdownElement.textContent = `大约${seconds}秒`;
+                } else {
+                    clearInterval(countdownInterval);
+                    countdownElement.textContent = '加载完成！';
+                }
+            }, 1000);
+        }
+        
         // 图片预加载函数
         function preloadBackgroundImage() {
             const img = new Image();
@@ -910,6 +1050,12 @@
         
         // 隐藏加载屏幕
         function hideLoadingScreen() {
+            // 停止加载时音乐播放
+            if (loadingAudio && loadingIsPlaying) {
+                loadingAudio.pause();
+                loadingIsPlaying = false;
+            }
+            
             const loadingScreen = document.getElementById('loadingScreen');
             if (loadingScreen) {
                 loadingScreen.classList.add('hidden');
@@ -921,6 +1067,12 @@
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化加载时音乐播放器
+            initLoadingMusicPlayer();
+            
+            // 开始倒计时
+            startCountdown();
+            
             // 预加载背景图片
             preloadBackgroundImage();
             
