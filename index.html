@@ -584,6 +584,16 @@
             text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
         }
         
+        .loading-tip {
+            font-size: 1em;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+            margin-bottom: 20px;
+            font-weight: 400;
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+            font-style: italic;
+        }
+        
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
@@ -852,6 +862,7 @@
             <div class="welcome-section">
                 <div class="welcome-message">
                     <h2 id="welcomeTitle">智能助手 & 资源中心</h2>
+                    <div class="loading-tip" id="loadingTip">首次使用加载时间长，请耐心等待</div>
                     <p id="welcomeText1">这里有AI智能聊天和软件下载两个实用功能</p>
                     <p id="welcomeText2">点击下方卡片，开始使用吧</p>
                 </div>
@@ -880,6 +891,7 @@
             zh: {
                 mainTitle: '欢迎！',
                 welcomeTitle: '智能助手 & 资源中心',
+                loadingTip: '首次使用加载时间长，请耐心等待',
                 welcomeText1: '这里有AI智能聊天和软件下载两个实用功能',
                 welcomeText2: '点击下方卡片，开始使用吧',
                 aiFeatureText: '基于多种AI模型的智能助手，支持GPT-4o、DeepSeek、Claude等主流模型，提供准确、有帮助的回答，让您的对话更加智能和高效',
@@ -890,6 +902,7 @@
             en: {
                 mainTitle: 'Welcome!',
                 welcomeTitle: 'Smart Assistant & Resource Center',
+                loadingTip: 'First use takes a long time to load, please wait patiently',
                 welcomeText1: 'Here are two practical features: AI intelligent chat and software download',
                 welcomeText2: 'Click the cards below to get started',
                 aiFeatureText: 'Intelligent assistant based on multiple AI models, supporting GPT-4o, DeepSeek, Claude and other mainstream models, providing accurate and helpful answers to make your conversations smarter and more efficient',
@@ -993,6 +1006,7 @@
             // 更新页面文本
             document.getElementById('mainTitle').textContent = lang.mainTitle;
             document.getElementById('welcomeTitle').textContent = lang.welcomeTitle;
+            document.getElementById('loadingTip').textContent = lang.loadingTip;
             document.getElementById('welcomeText1').textContent = lang.welcomeText1;
             document.getElementById('welcomeText2').textContent = lang.welcomeText2;
             document.getElementById('aiFeatureText').textContent = lang.aiFeatureText;
@@ -1094,15 +1108,28 @@
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 每次刷新都显示加载页面
-            // 初始化加载时音乐播放器
-            initLoadingMusicPlayer();
+            // 检查是否是从其他页面返回
+            const isReturning = sessionStorage.getItem('returningFromOtherPage');
             
-            // 开始倒计时
-            startCountdown();
-            
-            // 预加载背景图片
-            preloadBackgroundImage();
+            if (isReturning) {
+                // 从其他页面返回，直接显示主页面，不显示加载页面
+                sessionStorage.removeItem('returningFromOtherPage');
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+                document.body.classList.add('loaded');
+            } else {
+                // 正常访问，显示加载页面
+                // 初始化加载时音乐播放器
+                initLoadingMusicPlayer();
+                
+                // 开始倒计时
+                startCountdown();
+                
+                // 预加载背景图片
+                preloadBackgroundImage();
+            }
             
             createParticles();
             loadWeather();
