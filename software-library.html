@@ -530,7 +530,7 @@
         </header>
         
         <!-- 返回首页按钮 - 容器右上方 -->
-        <button class="back-button" onclick="window.location.href='index.html'">返回首页</button>
+                        <button class="back-button" onclick="returnToHome()">返回首页</button>
         
         <!-- 隐藏入口和小游戏按钮 - 容器左下方 -->
         <div class="secret-button-container">
@@ -607,6 +607,16 @@
             },
             {
                 id: 5,
+                name: "Voicemeeter变声器",
+                description: "专业的音频处理软件，支持变声、混音、音频路由等功能",
+                category: "windows",
+                icon: "🎤",
+                size: "24.2 MB",
+                version: "v1119",
+                downloadUrl: "https://wwzd.lanzouu.com/i3RX8329g1if"
+            },
+            {
+                id: 6,
                 name: "神秘图片1",
                 description: "2024年7月5日的神秘图片，充满未知的魅力",
                 category: "media",
@@ -616,7 +626,7 @@
                 downloadUrl: "http://t07isdi9k.hn-bkt.clouddn.com/20240705210739_1.jpg"
             },
             {
-                id: 6,
+                id: 7,
                 name: "神秘图片2",
                 description: "2024年7月8日的神秘图片，探索未知的世界",
                 category: "media",
@@ -626,7 +636,7 @@
                 downloadUrl: "http://t07isdi9k.hn-bkt.clouddn.com/20240708104740_1.jpg"
             },
             {
-                id: 7,
+                id: 8,
                 name: "神秘图片3",
                 description: "2024年8月18日的神秘图片，揭开神秘的面纱",
                 category: "media",
@@ -636,7 +646,7 @@
                 downloadUrl: "http://t07isdi9k.hn-bkt.clouddn.com/20240818202118_1.jpg"
             },
             {
-                id: 8,
+                id: 9,
                 name: "神秘视频",
                 description: "2025年4月27日的神秘视频，探索未知的视觉世界",
                 category: "media",
@@ -649,6 +659,12 @@
         
         let currentCategory = 'all';
         let currentSearch = '';
+        
+        // 返回主页函数
+        function returnToHome() {
+            sessionStorage.setItem('returningFromOtherPage', 'true');
+            window.location.href = 'index.html';
+        }
         
         // 初始化页面
         document.addEventListener('DOMContentLoaded', function() {
