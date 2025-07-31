@@ -72,7 +72,7 @@
             border-radius: 50%;
             animation: spin 1.2s linear infinite;
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-            margin-left: 50px;
+            margin-left: 100px;
         }
         
         @keyframes spin {
@@ -1094,29 +1094,15 @@
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 检查是否是首次访问
-            const isFirstVisit = !sessionStorage.getItem('hasVisited');
+            // 每次刷新都显示加载页面
+            // 初始化加载时音乐播放器
+            initLoadingMusicPlayer();
             
-            if (isFirstVisit) {
-                // 首次访问，显示加载页面
-                sessionStorage.setItem('hasVisited', 'true');
-                
-                // 初始化加载时音乐播放器
-                initLoadingMusicPlayer();
-                
-                // 开始倒计时
-                startCountdown();
-                
-                // 预加载背景图片
-                preloadBackgroundImage();
-            } else {
-                // 非首次访问，直接隐藏加载页面
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-                document.body.classList.add('loaded');
-            }
+            // 开始倒计时
+            startCountdown();
+            
+            // 预加载背景图片
+            preloadBackgroundImage();
             
             createParticles();
             loadWeather();
