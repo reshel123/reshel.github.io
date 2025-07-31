@@ -788,7 +788,7 @@
                     <button class="loading-music-btn" id="loadingPauseBtn" style="display: none;">⏸️ 暂停</button>
                 </div>
                 <h4>🎵 等待时听听音乐</h4>
-                <div class="loading-music-info" id="loadingMusicInfo">恶作剧 - 王蓝茵</div>
+                <div class="loading-music-info" id="loadingMusicInfo">Landslide - Oh Wonder</div>
             </div>
         </div>
     </div>
@@ -981,7 +981,7 @@
         
         // 初始化加载时音乐播放器
         function initLoadingMusicPlayer() {
-            loadingAudio = new Audio('https://music.163.com/song/media/outer/url?id=1984254540.mp3');
+            loadingAudio = new Audio('https://music.163.com/song/media/outer/url?id=1846511389.mp3');
             loadingAudio.preload = 'metadata';
             
             const loadingPlayBtn = document.getElementById('loadingPlayBtn');
@@ -1011,7 +1011,7 @@
             });
             
             loadingAudio.addEventListener('loadedmetadata', function() {
-                loadingMusicInfo.textContent = '7 Years - Lukas Graham';
+                loadingMusicInfo.textContent = 'Landslide - Oh Wonder';
             });
             
             loadingAudio.addEventListener('error', function() {
