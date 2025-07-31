@@ -153,6 +153,27 @@
             font-weight: 400;
         }
         
+        .loading-pc-tip {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .loading-pc-tip p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            text-align: center;
+            font-weight: 400;
+            margin: 0;
+            line-height: 1.4;
+        }
+        
         /* 浮动粒子效果 */
         .particles {
             position: fixed;
@@ -462,7 +483,7 @@
         
         .language-switch:hover {
             background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
+            transform: translateX(-50%) translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
         }
         
@@ -781,6 +802,11 @@
             <div class="loading-spinner"></div>
             <div class="loading-text">正在加载精彩内容...</div>
             
+            <!-- PC端访问提示 -->
+            <div class="loading-pc-tip">
+                <p>💻 建议使用PC端访问，移动端加载较慢</p>
+            </div>
+            
             <!-- 加载时音乐播放器 -->
             <div class="loading-music">
                 <div class="loading-music-controls">
@@ -1068,14 +1094,29 @@
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 初始化加载时音乐播放器
-            initLoadingMusicPlayer();
+            // 检查是否是首次访问
+            const isFirstVisit = !sessionStorage.getItem('hasVisited');
             
-            // 开始倒计时
-            startCountdown();
-            
-            // 预加载背景图片
-            preloadBackgroundImage();
+            if (isFirstVisit) {
+                // 首次访问，显示加载页面
+                sessionStorage.setItem('hasVisited', 'true');
+                
+                // 初始化加载时音乐播放器
+                initLoadingMusicPlayer();
+                
+                // 开始倒计时
+                startCountdown();
+                
+                // 预加载背景图片
+                preloadBackgroundImage();
+            } else {
+                // 非首次访问，直接隐藏加载页面
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+                document.body.classList.add('loaded');
+            }
             
             createParticles();
             loadWeather();
