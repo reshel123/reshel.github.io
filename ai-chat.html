@@ -12,13 +12,18 @@
         }
         
         body {
-            background-image: url('aiph.jpg');
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             color: #333333;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
+        }
+        
+        /* 背景图片懒加载 */
+        body.loaded {
+            background-image: url('aiph.jpg');
         }
         
         .container {
@@ -353,22 +358,39 @@
     </div>
 
     <script>
-                 const API_KEY = 'sk-9t0AEZrukDcXuPyqfNDw4FHHO0gWlF8rNLNDCdnylgHUy78U';
-         let tabs = [];
-         let currentTabId = null;
-         
-         // DOM元素
-         const tabsContainer = document.getElementById('tabsContainer');
-         const chatContainer = document.getElementById('chatContainer');
+        // 页面加载优化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 预加载背景图片
+            preloadBackgroundImage();
+            
+            // 创建粒子效果
+            createParticles();
+            
+            initFirstTab();
+            setupEventListeners();
+        });
         
-                 // 初始化
-         document.addEventListener('DOMContentLoaded', function() {
-             // 创建粒子效果
-             createParticles();
-             
-             initFirstTab();
-             setupEventListeners();
-         });
+        // 预加载背景图片
+        function preloadBackgroundImage() {
+            const img = new Image();
+            img.onload = function() {
+                // 图片加载完成后，应用背景
+                document.body.classList.add('loaded');
+            };
+            img.onerror = function() {
+                // 如果图片加载失败，保持渐变背景
+                console.log('背景图片加载失败，使用渐变背景');
+            };
+            img.src = 'aiph.jpg';
+        }
+        
+        const API_KEY = 'sk-9t0AEZrukDcXuPyqfNDw4FHHO0gWlF8rNLNDCdnylgHUy78U';
+        let tabs = [];
+        let currentTabId = null;
+        
+        // DOM元素
+        const tabsContainer = document.getElementById('tabsContainer');
+        const chatContainer = document.getElementById('chatContainer');
          
          // 创建浮动粒子
          function createParticles() {
