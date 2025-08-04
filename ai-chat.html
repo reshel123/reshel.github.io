@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI聊天</title>
+    <title>黄金树恩惠</title>
     <style>
         * {
             margin: 0;
@@ -323,11 +323,48 @@
             0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
             50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
         }
+        
+        /* 鼠标跟随特效 */
+        .cursor-follower {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(103, 126, 234, 0.7) 50%, rgba(255, 255, 255, 0.3) 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(103, 126, 234, 0.6), 0 0 25px rgba(255, 255, 255, 0.4);
+            transform: translate(-50%, -50%);
+            transition: none;
+            mix-blend-mode: screen;
+        }
+        
+        .cursor-follower.clicked {
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.95) 0%, rgba(255, 193, 7, 0.8) 50%, rgba(255, 215, 0, 0.4) 100%);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7), 0 0 35px rgba(255, 193, 7, 0.5);
+            transform: translate(-50%, -50%) scale(1.5);
+            animation: clickEffect 0.3s ease-out;
+        }
+        
+        @keyframes clickEffect {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(2);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
     </style>
 </head>
 <body>
     <!-- 浮动粒子 -->
     <div class="particles" id="particles"></div>
+    
+    <!-- 鼠标跟随容器 -->
+    <div class="cursor-follower" id="cursorFollower"></div>
     
     <div class="container">
         <header>
@@ -373,6 +410,9 @@
             // 创建粒子效果
             createParticles();
             
+            // 初始化鼠标跟随特效
+            initCursorTrail();
+            
             initFirstTab();
             setupEventListeners();
         });
@@ -413,6 +453,52 @@
                  particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
                  particlesContainer.appendChild(particle);
              }
+         }
+         
+         // 鼠标跟随特效功能
+         function initCursorTrail() {
+             const cursorFollower = document.getElementById('cursorFollower');
+             
+             // 使用requestAnimationFrame优化性能
+             let ticking = false;
+             
+             function updateCursorPosition(e) {
+                 cursorFollower.style.left = e.clientX + 'px';
+                 cursorFollower.style.top = e.clientY + 'px';
+                 ticking = false;
+             }
+             
+             // 监听鼠标移动
+             document.addEventListener('mousemove', function(e) {
+                 if (!ticking) {
+                     requestAnimationFrame(() => updateCursorPosition(e));
+                     ticking = true;
+                 }
+             });
+             
+             // 监听点击事件
+             document.addEventListener('mousedown', function(e) {
+                 if (e.target.matches('button, .feature-card, .music-player, .weather-widget, a, .language-switch, *')) {
+                     cursorFollower.classList.add('clicked');
+                 }
+             });
+             
+             document.addEventListener('mouseup', function(e) {
+                 // 延迟移除点击效果
+                 setTimeout(() => {
+                     cursorFollower.classList.remove('clicked');
+                 }, 300);
+             });
+             
+             // 鼠标离开页面时隐藏跟随器
+             document.addEventListener('mouseleave', function() {
+                 cursorFollower.style.opacity = '0';
+             });
+             
+             // 鼠标进入页面时显示跟随器
+             document.addEventListener('mouseenter', function() {
+                 cursorFollower.style.opacity = '1';
+             });
          }
          
          // 初始化第一个标签页

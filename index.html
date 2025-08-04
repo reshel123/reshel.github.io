@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI助手 & 软件下载中心</title>
+    <title>黄金树立誓</title>
     <link rel="icon" href="icon.jpg" type="image/jpeg">
     <link rel="shortcut icon" href="icon.jpg" type="image/jpeg">
     <style>
@@ -265,63 +265,99 @@
         /* 音乐播放器样式 */
         .music-player {
             position: absolute;
-            top: 20px;
+            top: 10px;
             right: 80px;
             z-index: 10;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            border-radius: 15px;
-            padding: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            min-width: 200px;
-            max-width: 250px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(25px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            min-width: 220px;
+            max-width: 280px;
             text-align: center;
             animation: fadeInUp 1s ease-out 1s both;
+            transition: all 0.3s ease;
+        }
+        
+        .music-player:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
         }
         
         .music-player h3 {
             color: #ffffff;
-            font-size: 14px;
-            margin: 0 0 10px 0;
+            font-size: 15px;
+            margin: 0 0 15px 0;
             font-weight: 600;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+            letter-spacing: 0.5px;
         }
         
         .music-controls {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-bottom: 8px;
+            gap: 12px;
+            margin-bottom: 12px;
         }
         
         .play-btn {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.18);
             color: white;
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.35);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            font-size: 18px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(15px);
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
         .play-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.1);
-            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.08);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
         }
         
         .play-btn.playing {
-            background: rgba(76, 175, 80, 0.3);
+            background: rgba(76, 175, 80, 0.25);
             border-color: rgba(76, 175, 80, 0.6);
             animation: pulse 2s infinite;
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.2);
+        }
+        
+        .switch-btn {
+            background: rgba(255, 255, 255, 0.18);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .switch-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.08) rotate(180deg);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
         }
         
         @keyframes pulse {
@@ -329,27 +365,78 @@
             50% { transform: scale(1.05); }
         }
         
+        /* 鼠标跟随特效 */
+        .cursor-follower {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(103, 126, 234, 0.7) 50%, rgba(255, 255, 255, 0.3) 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(103, 126, 234, 0.6), 0 0 25px rgba(255, 255, 255, 0.4);
+            transform: translate(-50%, -50%);
+            transition: none;
+            mix-blend-mode: screen;
+        }
+        
+        .cursor-follower.clicked {
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.95) 0%, rgba(255, 193, 7, 0.8) 50%, rgba(255, 215, 0, 0.4) 100%);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7), 0 0 35px rgba(255, 193, 7, 0.5);
+            transform: translate(-50%, -50%) scale(1.5);
+            animation: clickEffect 0.3s ease-out;
+        }
+        
+        @keyframes clickEffect {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(2);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
+        
         .music-info {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            margin-top: 5px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 8px;
+            font-weight: 500;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            line-height: 1.4;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .music-counter {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 4px;
+            font-weight: 400;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         
         .music-progress {
             width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            margin-top: 8px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            margin-top: 12px;
             overflow: hidden;
+            position: relative;
         }
         
         .music-progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.8));
-            border-radius: 2px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.9));
+            border-radius: 3px;
             width: 0%;
-            transition: width 0.1s ease;
+            transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
         }
         
         .weather-widget::before {
@@ -768,15 +855,61 @@
             .music-player {
                 min-width: 180px;
                 max-width: 220px;
-                top: 10px;
+                top: 5px;
                 right: 60px;
                 padding: 12px;
             }
 
-            .play-btn {
+            .play-btn, .switch-btn {
                 width: 35px;
                 height: 35px;
                 font-size: 14px;
+            }
+            
+            .music-info {
+                font-size: 11px;
+            }
+            
+            .music-counter {
+                font-size: 10px;
+            }
+            
+            .music-progress {
+                height: 4px;
+                margin-top: 8px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .music-player {
+                position: static;
+                margin: 0 auto 15px auto;
+                width: 100%;
+                max-width: 280px;
+                padding: 15px;
+            }
+            
+            .music-player h3 {
+                font-size: 14px;
+                margin-bottom: 12px;
+            }
+            
+            .play-btn, .switch-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+            
+            .music-info {
+                font-size: 11px;
+            }
+            
+            .music-counter {
+                font-size: 9px;
+            }
+            
+            .music-controls {
+                gap: 10px;
             }
         }
         
@@ -832,6 +965,9 @@
     <!-- 浮动粒子 -->
     <div class="particles" id="particles"></div>
     
+    <!-- 鼠标拖尾容器 -->
+            <div class="cursor-follower" id="cursorFollower"></div>
+    
     <div class="container">
         <header>
             <div class="header-top">
@@ -850,8 +986,10 @@
                 <h3>🎵 背景音乐</h3>
                 <div class="music-controls">
                     <button class="play-btn" id="playBtn">▶️</button>
+                    <button class="switch-btn" id="switchBtn" title="随机切换歌曲">🔄</button>
                 </div>
                 <div class="music-info" id="musicInfo">Story of us - July</div>
+                <div class="music-counter" id="musicCounter">1/8</div>
                 <div class="music-progress">
                     <div class="music-progress-bar" id="progressBar"></div>
                 </div>
@@ -930,30 +1068,130 @@
             }
         }
         
+        // 鼠标拖尾特效
+        let mouseX = 0;
+        let mouseY = 0;
+        let isHovering = false;
+
+        
+        function initCursorTrail() {
+            const cursorFollower = document.getElementById('cursorFollower');
+            
+            // 使用requestAnimationFrame优化性能
+            let ticking = false;
+            
+            function updateCursorPosition(e) {
+                cursorFollower.style.left = e.clientX + 'px';
+                cursorFollower.style.top = e.clientY + 'px';
+                ticking = false;
+            }
+            
+            // 监听鼠标移动
+            document.addEventListener('mousemove', function(e) {
+                if (!ticking) {
+                    requestAnimationFrame(() => updateCursorPosition(e));
+                    ticking = true;
+                }
+            });
+            
+            // 监听点击事件
+            document.addEventListener('mousedown', function(e) {
+                if (e.target.matches('button, .feature-card, .music-player, .weather-widget, a, .language-switch, *')) {
+                    cursorFollower.classList.add('clicked');
+                }
+            });
+            
+            document.addEventListener('mouseup', function(e) {
+                // 延迟移除点击效果
+                setTimeout(() => {
+                    cursorFollower.classList.remove('clicked');
+                }, 300);
+            });
+            
+            // 鼠标离开页面时隐藏跟随器
+            document.addEventListener('mouseleave', function() {
+                cursorFollower.style.opacity = '0';
+            });
+            
+            // 鼠标进入页面时显示跟随器
+            document.addEventListener('mouseenter', function() {
+                cursorFollower.style.opacity = '1';
+            });
+        }
+        
         // 音乐播放器功能
         let audio = null;
         let isPlaying = false;
+        let currentSongIndex = 0;
+        let playedSongs = []; // 记录已播放的歌曲索引
+        
+        // 歌曲列表
+        const songs = [
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=399347079.mp3',
+                name: 'Story of us - July'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1372188635.mp3',
+                name: 'Daylight - Seredris'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1805290933.mp3',
+                name: 'All Girls Are The Same - Juice WRLD'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=410802679.mp3',
+                name: 'Lot To Learn - Luke Christopher'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=512621132.mp3',
+                name: 'Breathe - Kenzie'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1398283847.mp3',
+                name: '我只能离开 - 颜人中'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1786869.mp3',
+                name: 'So Sick - Ne-Yo'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=227693.mp3',
+                name: '一点点喜欢 - 邓福如 AFÜ'
+            }
+        ];
         
         // 初始化音乐播放器
         function initMusicPlayer() {
             const playBtn = document.getElementById('playBtn');
+            const switchBtn = document.getElementById('switchBtn');
             const progressBar = document.getElementById('progressBar');
             
             // 创建音频对象
-            audio = new Audio('https://music.163.com/song/media/outer/url?id=399347079.mp3');
+            audio = new Audio(songs[currentSongIndex].url);
             audio.preload = 'metadata';
             
             // 播放/暂停按钮事件
             playBtn.addEventListener('click', togglePlay);
             
+            // 切换歌曲按钮事件
+            switchBtn.addEventListener('click', switchSong);
+            
             // 音频事件监听
             audio.addEventListener('loadedmetadata', function() {
                 console.log('音频加载完成');
-                document.getElementById('musicInfo').textContent = 'Story of us - July';
+                document.getElementById('musicInfo').textContent = songs[currentSongIndex].name;
+                // 初始化时记录第一首歌到播放历史
+                if (playedSongs.length === 0) {
+                    playedSongs.push(currentSongIndex);
+                }
+                document.getElementById('musicCounter').textContent = `${playedSongs.length}/${songs.length}`;
+                // 重置进度条
+                progressBar.style.width = '0%';
             });
             
             audio.addEventListener('timeupdate', function() {
-                if (audio.duration) {
+                if (audio.duration && !isNaN(audio.duration)) {
                     const progress = (audio.currentTime / audio.duration) * 100;
                     progressBar.style.width = progress + '%';
                 }
@@ -964,11 +1202,30 @@
                 playBtn.textContent = '▶️';
                 playBtn.classList.remove('playing');
                 progressBar.style.width = '0%';
+                // 自动播放下一首
+                setTimeout(() => {
+                    switchSong();
+                }, 1000);
             });
             
             audio.addEventListener('error', function(e) {
                 console.error('音频加载失败:', e);
-                document.getElementById('musicInfo').textContent = '音频加载失败';
+                document.getElementById('musicInfo').textContent = '音频加载失败，点击切换';
+                // 自动切换到下一首
+                setTimeout(() => {
+                    switchSong();
+                }, 2000);
+            });
+            
+            // 键盘快捷键支持
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+                    e.preventDefault();
+                    togglePlay();
+                } else if (e.code === 'ArrowRight' && !e.target.matches('input, textarea')) {
+                    e.preventDefault();
+                    switchSong();
+                }
             });
         }
         
@@ -991,6 +1248,108 @@
                 playBtn.textContent = '▶️';
                 playBtn.classList.remove('playing');
             }
+        }
+        
+        // 获取随机歌曲索引
+        function getRandomSongIndex() {
+            // 如果所有歌曲都播放过了，重置播放历史
+            if (playedSongs.length >= songs.length) {
+                playedSongs = [];
+                console.log('所有歌曲已播放完毕，重新开始随机播放');
+            }
+            
+            // 获取未播放的歌曲索引
+            const availableSongs = [];
+            for (let i = 0; i < songs.length; i++) {
+                if (!playedSongs.includes(i)) {
+                    availableSongs.push(i);
+                }
+            }
+            
+            // 随机选择一个未播放的歌曲
+            const randomIndex = Math.floor(Math.random() * availableSongs.length);
+            const selectedIndex = availableSongs[randomIndex];
+            
+            // 记录已播放的歌曲
+            playedSongs.push(selectedIndex);
+            
+            return selectedIndex;
+        }
+        
+        // 切换歌曲
+        function switchSong() {
+            // 获取随机歌曲索引
+            currentSongIndex = getRandomSongIndex();
+            
+            // 记录当前播放状态
+            const wasPlaying = isPlaying;
+            
+            // 停止当前播放
+            if (isPlaying) {
+                audio.pause();
+                isPlaying = false;
+            }
+            
+            // 显示切换提示
+            const musicInfo = document.getElementById('musicInfo');
+            musicInfo.textContent = '切换中...';
+            
+            // 创建新的音频对象
+            audio = new Audio(songs[currentSongIndex].url);
+            audio.preload = 'metadata';
+            
+            // 重新绑定事件监听
+            audio.addEventListener('loadedmetadata', function() {
+                console.log('音频加载完成');
+                musicInfo.textContent = songs[currentSongIndex].name;
+                document.getElementById('musicCounter').textContent = `${playedSongs.length}/${songs.length}`;
+                // 重置进度条
+                document.getElementById('progressBar').style.width = '0%';
+            });
+            
+            audio.addEventListener('timeupdate', function() {
+                if (audio.duration && !isNaN(audio.duration)) {
+                    const progress = (audio.currentTime / audio.duration) * 100;
+                    document.getElementById('progressBar').style.width = progress + '%';
+                }
+            });
+            
+            audio.addEventListener('ended', function() {
+                isPlaying = false;
+                document.getElementById('playBtn').textContent = '▶️';
+                document.getElementById('playBtn').classList.remove('playing');
+                document.getElementById('progressBar').style.width = '0%';
+                // 自动播放下一首
+                setTimeout(() => {
+                    switchSong();
+                }, 1000);
+            });
+            
+            audio.addEventListener('error', function(e) {
+                console.error('音频加载失败:', e);
+                musicInfo.textContent = '音频加载失败，自动切换';
+                // 自动切换到下一首
+                setTimeout(() => {
+                    switchSong();
+                }, 2000);
+            });
+            
+            // 如果之前在播放，则自动播放新歌曲
+            if (wasPlaying) {
+                setTimeout(() => {
+                    audio.play().then(() => {
+                        isPlaying = true;
+                        document.getElementById('playBtn').textContent = '⏸️';
+                        document.getElementById('playBtn').classList.add('playing');
+                    }).catch(error => {
+                        console.error('播放失败:', error);
+                        musicInfo.textContent = '播放失败，请重试';
+                    });
+                }, 500);
+            }
+            
+            // 重置进度条
+            document.getElementById('progressBar').style.width = '0%';
         }
         
         // 语言切换功能
@@ -1145,8 +1504,12 @@
             }
             
             createParticles();
+            initCursorTrail();
             loadWeather();
             initMusicPlayer();
+            
+            // 初始化Konami代码彩蛋
+            initKonamiCode();
             
             // 语言切换功能
             const languageSwitch = document.getElementById('languageSwitch');
@@ -1235,6 +1598,123 @@
             localStorage.removeItem('weatherCacheTime');
             cachedLocation = null;
             console.log('天气缓存已清除');
+        }
+        
+        // Konami代码彩蛋功能
+        function initKonamiCode() {
+            const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 
+                               'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 
+                               'b', 'a'];
+            let inputSequence = [];
+            
+            document.addEventListener('keydown', (e) => {
+                inputSequence.push(e.key);
+                if (inputSequence.length > konamiCode.length) {
+                    inputSequence.shift();
+                }
+                
+                if (JSON.stringify(inputSequence) === JSON.stringify(konamiCode)) {
+                    // 触发彩蛋效果
+                    triggerKonamiEasterEgg();
+                }
+            });
+        }
+        
+        // 触发Konami彩蛋效果 - 表情雨
+        function triggerKonamiEasterEgg() {
+            // 表情数组
+            const emojis = ['🎉', '🎊', '✨', '🌟', '💫', '🎈', '🎁', '🎪', '🎭', '🎨', '🎯', '🎲', '🎮', '🎸', '🎺', '🎻', '🎼', '🎵', '🎶', '🎤', '🎧', '🎬', '🎭', '🎪', '🎨', '🎯', '🎲', '🎮', '🎸', '🎺', '🎻', '🎼', '🎵', '🎶', '🎤', '🎧', '🎬', '🎭', '🎪', '🎨', '🎯', '🎲', '🎮', '🎸', '🎺', '🎻', '🎼', '🎵', '🎶', '🎤', '🎧', '🎬'];
+            
+            // 创建表情雨容器
+            const emojiRain = document.createElement('div');
+            emojiRain.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9999;
+                overflow: hidden;
+            `;
+            document.body.appendChild(emojiRain);
+            
+            // 添加表情雨动画样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes emojiFall {
+                    0% {
+                        transform: translateY(-100px) rotate(0deg);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateY(100vh) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+                @keyframes emojiBounce {
+                    0%, 100% {
+                        transform: translateY(-100px) scale(1);
+                    }
+                    50% {
+                        transform: translateY(50vh) scale(1.2);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // 创建表情雨
+            let emojiCount = 0;
+            const maxEmojis = 50;
+            const rainDuration = 3000; // 3秒
+            const emojiInterval = 60; // 每60ms创建一个表情
+            
+            const createEmoji = () => {
+                if (emojiCount >= maxEmojis) return;
+                
+                const emoji = document.createElement('div');
+                emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                emoji.style.cssText = `
+                    position: absolute;
+                    font-size: ${20 + Math.random() * 30}px;
+                    left: ${Math.random() * 100}%;
+                    animation: ${Math.random() > 0.5 ? 'emojiFall' : 'emojiBounce'} ${2 + Math.random() * 3}s linear forwards;
+                    z-index: ${Math.floor(Math.random() * 10)};
+                `;
+                
+                emojiRain.appendChild(emoji);
+                emojiCount++;
+                
+                // 动画结束后移除表情
+                setTimeout(() => {
+                    if (emoji.parentNode) {
+                        emoji.parentNode.removeChild(emoji);
+                    }
+                }, 5000);
+            };
+            
+            // 开始表情雨
+            const rainInterval = setInterval(createEmoji, emojiInterval);
+            
+            // 停止表情雨
+            setTimeout(() => {
+                clearInterval(rainInterval);
+                // 清理剩余表情
+                setTimeout(() => {
+                    if (emojiRain.parentNode) {
+                        emojiRain.parentNode.removeChild(emojiRain);
+                    }
+                }, 5000);
+            }, rainDuration);
+            
+            // 播放音效（如果有的话）
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+                audio.volume = 0.3;
+                audio.play().catch(() => {});
+            } catch (e) {
+                // 忽略音效错误
+            }
         }
         
         // 获取当前位置
