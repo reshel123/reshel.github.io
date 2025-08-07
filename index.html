@@ -247,7 +247,7 @@
         /* 天气模块样式 */
         .weather-widget {
             position: absolute;
-            top: -50px;
+            top: -70px;
             left: 20px;
             z-index: 10;
             background: rgba(255, 255, 255, 0.15);
@@ -260,6 +260,15 @@
             max-width: 140px;
             text-align: center;
             animation: fadeInUp 1s ease-out 0.8s both;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .weather-widget:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
         }
         
         /* 音乐播放器样式 */
@@ -955,9 +964,11 @@
                 <div class="loading-music-controls">
                     <button class="loading-music-btn" id="loadingPlayBtn">▶️ 播放</button>
                     <button class="loading-music-btn" id="loadingPauseBtn" style="display: none;">⏸️ 暂停</button>
+                    <button class="loading-music-btn" id="loadingSwitchBtn" title="切换歌曲">🔄</button>
                 </div>
                 <h4>🎵 等待时听听音乐</h4>
                 <div class="loading-music-info" id="loadingMusicInfo">Landslide - Oh Wonder</div>
+                <div class="loading-music-counter" id="loadingMusicCounter">1/3</div>
             </div>
         </div>
     </div>
@@ -972,7 +983,7 @@
         <header>
             <div class="header-top">
                 <h1 id="mainTitle" class="main-title">欢迎！</h1>
-                <div class="weather-widget" id="weatherWidget">
+                <div class="weather-widget" id="weatherWidget" onclick="refreshLocationAndWeather()" title="点击刷新位置和天气">
                     <div class="weather-loading">
                         <div class="spinner"></div>
                         <span style="margin-left: 10px;">加载天气中...</span>
@@ -1008,7 +1019,7 @@
                 <div class="features-grid">
                     <div class="feature-card" id="aiFeatureCard">
                         <h3>🤖 AI智能聊天</h3>
-                        <p id="aiFeatureText">基于多种AI模型的智能助手，支持GPT-4o、DeepSeek、Claude等主流模型，提供准确、有帮助的回答，让您的对话更加智能和高效</p>
+                        <p id="aiFeatureText">基于多种AI模型的智能助手，支持GPT-4o、DeepSeek等主流模型，提供准确、有帮助的回答，让您的对话更加智能和高效</p>
                     </div>
                     <div class="feature-card" id="softwareFeatureCard">
                         <h3>📦 资源下载中心</h3>
@@ -1032,7 +1043,7 @@
                 loadingTip: '首次使用加载时间长，请耐心等待',
                 welcomeText1: '这里有AI智能聊天和软件下载两个实用功能',
                 welcomeText2: '点击下方卡片，开始使用吧',
-                aiFeatureText: '基于多种AI模型的智能助手，支持GPT-4o、DeepSeek、Claude等主流模型，提供准确、有帮助的回答，让您的对话更加智能和高效',
+                aiFeatureText: '基于多种AI模型的智能助手，支持GPT-4o、DeepSeek等主流模型，提供准确、有帮助的回答，让您的对话更加智能和高效',
                 softwareFeatureText: '提供各种软件、游戏、工具和资源的下载服务，包括Windows应用、安卓应用和媒体文件，满足您的各种需求',
                 footerText: '© 2025 | 作者：黄金树',
                 languageButton: '🌐 中文',
@@ -1043,7 +1054,7 @@
                 loadingTip: 'First use takes a long time to load, please wait patiently',
                 welcomeText1: 'Here are two practical features: AI intelligent chat and software download',
                 welcomeText2: 'Click the cards below to get started',
-                aiFeatureText: 'Intelligent assistant based on multiple AI models, supporting GPT-4o, DeepSeek, Claude and other mainstream models, providing accurate and helpful answers to make your conversations smarter and more efficient',
+                aiFeatureText: 'Intelligent assistant based on multiple AI models, supporting GPT-4o, DeepSeek and other mainstream models, providing accurate and helpful answers to make your conversations smarter and more efficient',
                 softwareFeatureText: 'Provide various software, games, tools and resource download services, including Windows apps, Android apps and media files to meet your various needs',
                 footerText: '© 2025 | Author: Golden Tree',
                 languageButton: '🌐 English'
@@ -1377,15 +1388,73 @@
         // 加载时音乐播放器
         let loadingAudio = null;
         let loadingIsPlaying = false;
+        let loadingCurrentSongIndex = 0;
+        let loadingPlayedSongs = [];
+        
+        // 加载时歌曲列表
+        const loadingSongs = [
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1846511389.mp3',
+                name: 'Landslide - Oh Wonder'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=2086154795.mp3',
+                name: 'Tek It - Cream Pie'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1862710424.mp3',
+                name: 'Stay - The Kid LAROI/Justin Bieber'
+            }
+        ];
         
         // 初始化加载时音乐播放器
         function initLoadingMusicPlayer() {
-            loadingAudio = new Audio('https://music.163.com/song/media/outer/url?id=1846511389.mp3');
+            loadingAudio = new Audio(loadingSongs[0].url);
             loadingAudio.preload = 'metadata';
             
             const loadingPlayBtn = document.getElementById('loadingPlayBtn');
             const loadingPauseBtn = document.getElementById('loadingPauseBtn');
+            const loadingSwitchBtn = document.getElementById('loadingSwitchBtn');
             const loadingMusicInfo = document.getElementById('loadingMusicInfo');
+            const loadingMusicCounter = document.getElementById('loadingMusicCounter');
+            
+            // 更新歌曲信息显示
+            function updateLoadingSongInfo() {
+                loadingMusicInfo.textContent = loadingSongs[loadingCurrentSongIndex].name;
+                loadingMusicCounter.textContent = `${loadingCurrentSongIndex + 1}/${loadingSongs.length}`;
+            }
+            
+            // 切换歌曲
+            function switchLoadingSong() {
+                // 随机选择一首未播放过的歌曲
+                const unplayedSongs = loadingSongs.filter((_, index) => !loadingPlayedSongs.includes(index));
+                
+                if (unplayedSongs.length === 0) {
+                    // 所有歌曲都播放过了，重新开始
+                    loadingPlayedSongs = [];
+                    loadingCurrentSongIndex = Math.floor(Math.random() * loadingSongs.length);
+                } else {
+                    // 从未播放的歌曲中随机选择
+                    const randomIndex = Math.floor(Math.random() * unplayedSongs.length);
+                    const songIndex = loadingSongs.indexOf(unplayedSongs[randomIndex]);
+                    loadingCurrentSongIndex = songIndex;
+                }
+                
+                loadingPlayedSongs.push(loadingCurrentSongIndex);
+                
+                // 更新音频源
+                const wasPlaying = loadingIsPlaying;
+                loadingAudio.pause();
+                loadingAudio.src = loadingSongs[loadingCurrentSongIndex].url;
+                updateLoadingSongInfo();
+                
+                if (wasPlaying) {
+                    loadingAudio.play().catch(error => {
+                        console.error('加载时音乐播放失败:', error);
+                        loadingMusicInfo.textContent = '音乐播放失败';
+                    });
+                }
+            }
             
             loadingPlayBtn.addEventListener('click', function() {
                 if (!loadingIsPlaying) {
@@ -1409,29 +1478,111 @@
                 }
             });
             
+            loadingSwitchBtn.addEventListener('click', function() {
+                switchLoadingSong();
+            });
+            
             loadingAudio.addEventListener('loadedmetadata', function() {
-                loadingMusicInfo.textContent = 'Landslide - Oh Wonder';
+                updateLoadingSongInfo();
             });
             
             loadingAudio.addEventListener('error', function() {
                 loadingMusicInfo.textContent = '音乐加载失败';
             });
+            
+            loadingAudio.addEventListener('ended', function() {
+                // 歌曲播放结束后自动切换
+                switchLoadingSong();
+            });
+            
+            // 初始化显示
+            updateLoadingSongInfo();
         }
         
-        // 倒计时函数
-        function startCountdown() {
-            let seconds = 90;
+        // 智能加载系统
+        let loadingProgress = 0;
+        let loadingTasks = [];
+        let isFullyLoaded = false;
+        
+        // 添加加载任务
+        function addLoadingTask(taskName, taskFunction) {
+            loadingTasks.push({
+                name: taskName,
+                function: taskFunction,
+                completed: false
+            });
+        }
+        
+        // 标记任务完成
+        function markTaskComplete(taskName) {
+            const task = loadingTasks.find(t => t.name === taskName);
+            if (task) {
+                task.completed = true;
+                console.log(`任务完成: ${taskName}`);
+                updateLoadingProgress();
+            }
+        }
+        
+        // 更新加载进度
+        function updateLoadingProgress() {
+            const completedTasks = loadingTasks.filter(t => t.completed).length;
+            const totalTasks = loadingTasks.length;
+            loadingProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+            
+            const countdownElement = document.getElementById('loadingCountdown');
+            if (countdownElement) {
+                if (loadingProgress >= 100) {
+                    countdownElement.textContent = '加载完成！';
+                    if (!isFullyLoaded) {
+                        isFullyLoaded = true;
+                        setTimeout(() => {
+                            hideLoadingScreen();
+                        }, 1000);
+                    }
+                } else {
+                    countdownElement.textContent = `加载中... ${Math.round(loadingProgress)}%`;
+                }
+            }
+        }
+        
+        // 智能倒计时（作为备用方案）
+        function startSmartCountdown() {
+            let seconds = 0;
             const countdownElement = document.getElementById('loadingCountdown');
             
             const countdownInterval = setInterval(() => {
-                seconds--;
-                if (seconds > 0) {
-                    countdownElement.textContent = `大约${seconds}秒`;
+                seconds++;
+                if (!isFullyLoaded) {
+                    if (seconds <= 30) {
+                        countdownElement.textContent = `正在加载... ${seconds}秒`;
+                    } else if (seconds <= 60) {
+                        countdownElement.textContent = `加载较慢，请耐心等待... ${seconds}秒`;
+                    } else {
+                        countdownElement.textContent = `加载时间较长，即将强制进入... ${seconds}秒`;
+                        if (seconds >= 90) {
+                            clearInterval(countdownInterval);
+                            countdownElement.textContent = '加载完成！';
+                            setTimeout(() => {
+                                hideLoadingScreen();
+                            }, 1000);
+                        }
+                    }
                 } else {
                     clearInterval(countdownInterval);
-                    countdownElement.textContent = '加载完成！';
                 }
             }, 1000);
+        }
+        
+        // 调试函数：显示当前加载状态
+        function debugLoadingStatus() {
+            console.log('当前加载状态:');
+            console.log('总任务数:', loadingTasks.length);
+            console.log('已完成任务数:', loadingTasks.filter(t => t.completed).length);
+            console.log('加载进度:', loadingProgress + '%');
+            console.log('是否完全加载:', isFullyLoaded);
+            loadingTasks.forEach(task => {
+                console.log(`- ${task.name}: ${task.completed ? '完成' : '进行中'}`);
+            });
         }
         
         // 图片预加载函数
@@ -1439,11 +1590,11 @@
             const img = new Image();
             img.onload = function() {
                 document.body.classList.add('loaded');
-                hideLoadingScreen();
+                markTaskComplete('backgroundImage');
             };
             img.onerror = function() {
                 console.log('背景图片加载失败，使用默认渐变背景');
-                hideLoadingScreen();
+                markTaskComplete('backgroundImage');
             };
             img.src = 'erd.jpg';
         }
@@ -1493,22 +1644,40 @@
                 quickPreloadBackgroundImage();
             } else {
                 // 正常访问，显示加载页面
-                // 初始化加载时音乐播放器
-                initLoadingMusicPlayer();
+                // 初始化智能加载系统
+                addLoadingTask('backgroundImage', preloadBackgroundImage);
+                addLoadingTask('loadingMusicPlayer', initLoadingMusicPlayer);
+                addLoadingTask('weatherData', loadWeather);
+                addLoadingTask('particles', createParticles);
+                addLoadingTask('cursorTrail', initCursorTrail);
+                addLoadingTask('mainMusicPlayer', initMusicPlayer);
+                addLoadingTask('konamiCode', initKonamiCode);
                 
-                // 开始倒计时
-                startCountdown();
+                // 开始智能倒计时（备用方案）
+                startSmartCountdown();
                 
-                // 预加载背景图片
+                // 执行加载任务
                 preloadBackgroundImage();
+                initLoadingMusicPlayer();
+                markTaskComplete('loadingMusicPlayer');
+                markTaskComplete('particles');
+                markTaskComplete('cursorTrail');
+                markTaskComplete('mainMusicPlayer');
+                markTaskComplete('konamiCode');
+                
+                // 异步加载天气数据
+                loadWeather().then(() => {
+                    markTaskComplete('weatherData');
+                }).catch(() => {
+                    markTaskComplete('weatherData');
+                });
             }
             
+            // 确保所有功能都正确初始化
             createParticles();
             initCursorTrail();
             loadWeather();
             initMusicPlayer();
-            
-            // 初始化Konami代码彩蛋
             initKonamiCode();
             
             // 语言切换功能
@@ -1534,26 +1703,28 @@
             const weatherWidget = document.getElementById('weatherWidget');
             
             try {
+                // 检查位置缓存时间，如果超过1小时则重新获取位置
+                const locationCacheTime = localStorage.getItem('weatherLocationTime');
+                const currentTime = Date.now();
+                const shouldRefreshLocation = !locationCacheTime || (currentTime - parseInt(locationCacheTime)) > 60 * 60 * 1000; // 1小时
+                
                 // 首先尝试从localStorage读取缓存的位置数据
                 const cachedLocationData = localStorage.getItem('weatherLocation');
-                if (cachedLocationData) {
+                if (cachedLocationData && !shouldRefreshLocation) {
                     cachedLocation = JSON.parse(cachedLocationData);
-                    console.log('从localStorage读取到缓存位置:', cachedLocation);
-                }
-                
-                // 如果没有缓存的位置数据，才获取新位置
-                if (!cachedLocation) {
-                    console.log('没有缓存位置，开始获取位置...');
+                    console.log('使用缓存位置:', cachedLocation);
+                } else {
+                    // 需要刷新位置或没有缓存
+                    console.log('开始获取新位置...');
                     const position = await getCurrentPosition();
                     cachedLocation = {
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude
                     };
                     console.log('获取到新位置:', cachedLocation);
-                    // 将位置数据存储到localStorage
+                    // 将位置数据和时间存储到localStorage
                     localStorage.setItem('weatherLocation', JSON.stringify(cachedLocation));
-                } else {
-                    console.log('使用缓存位置:', cachedLocation);
+                    localStorage.setItem('weatherLocationTime', currentTime.toString());
                 }
                 
                 // 检查是否有缓存的天气数据且不超过30分钟
@@ -1566,7 +1737,7 @@
                     console.log('使用缓存天气数据');
                     const weatherData = JSON.parse(cachedData);
                     updateWeatherDisplay(weatherData);
-                    return;
+                    return Promise.resolve();
                 }
                 
                 // 获取新的天气数据
@@ -1578,6 +1749,7 @@
                 localStorage.setItem('weatherCacheTime', now.toString());
                 
                 updateWeatherDisplay(weatherData);
+                return Promise.resolve();
                 
             } catch (error) {
                 console.error('天气加载失败:', error);
@@ -1586,18 +1758,34 @@
                         <div>🌤️ 天气信息</div>
                         <div style="font-size: 0.8em; margin-top: 5px;">暂时无法获取</div>
                         <div style="font-size: 0.7em; margin-top: 3px; opacity: 0.7;">${error.message}</div>
+                        <div class="weather-refresh-tip" style="font-size: 0.7em; opacity: 0.7; margin-top: 5px;">点击刷新位置</div>
                     </div>
                 `;
+                return Promise.reject(error);
             }
         }
         
         // 清除天气缓存（用于调试）
         function clearWeatherCache() {
             localStorage.removeItem('weatherLocation');
+            localStorage.removeItem('weatherLocationTime');
             localStorage.removeItem('weatherData');
             localStorage.removeItem('weatherCacheTime');
             cachedLocation = null;
             console.log('天气缓存已清除');
+        }
+        
+        // 手动刷新位置和天气（用户主动触发）
+        async function refreshLocationAndWeather() {
+            console.log('用户主动刷新位置和天气...');
+            // 清除位置缓存，强制重新获取
+            localStorage.removeItem('weatherLocation');
+            localStorage.removeItem('weatherLocationTime');
+            localStorage.removeItem('weatherData');
+            localStorage.removeItem('weatherCacheTime');
+            cachedLocation = null;
+            // 重新加载天气
+            await loadWeather();
         }
         
         // Konami代码彩蛋功能
@@ -1863,6 +2051,7 @@
                         </div>
                     </div>
                     ${cityName ? `<div class="weather-city">${cityName}</div>` : ''}
+                    <div class="weather-refresh-tip" style="font-size: 0.7em; opacity: 0.7; margin-top: 5px;">点击刷新位置</div>
                 `;
             } else if (data.code === '200' && data.now === undefined) {
                 // 如果API返回成功但没有now字段，尝试其他字段
@@ -1876,12 +2065,14 @@
                             <span>${data.code}</span>
                         </div>
                     </div>
+                    <div class="weather-refresh-tip" style="font-size: 0.7em; opacity: 0.7; margin-top: 5px;">点击刷新位置</div>
                 `;
             } else {
                 weatherWidget.innerHTML = `
                     <div class="weather-error">
                         <div>🌤️ 天气信息</div>
                         <div style="font-size: 0.8em; margin-top: 5px;">数据获取失败 (${data.code || '未知错误'})</div>
+                        <div class="weather-refresh-tip" style="font-size: 0.7em; opacity: 0.7; margin-top: 5px;">点击刷新位置</div>
                     </div>
                 `;
             }
