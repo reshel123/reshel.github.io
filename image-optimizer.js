@@ -6,7 +6,21 @@ document.addEventListener('DOMContentLoaded', function() {
     preloadBackgroundImage();
 });
 
-// 预加载背景图片
+// 探测是否支持 WebP（一次简单探测）
+function supportsWebp() {
+    try {
+        const canvas = document.createElement('canvas');
+        if (!!(canvas.getContext && canvas.getContext('2d'))) {
+            // toDataURL 返回值中包含 'image/webp' 代表支持
+            return canvas.toDataURL('image/webp').indexOf('image/webp') === 5;
+        }
+        return false;
+    } catch (_) {
+        return false;
+    }
+}
+
+// 预加载背景图片（优先 WebP，失败回退 JPG）
 function preloadBackgroundImage() {
     // 根据当前页面确定背景图片
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
@@ -37,17 +51,31 @@ function preloadBackgroundImage() {
     }
     
     if (backgroundImage) {
-        const img = new Image();
-        img.onload = function() {
-            // 图片加载完成后，应用背景
-            document.body.classList.add('loaded');
-            console.log('背景图片加载完成:', backgroundImage);
+        const tryLoad = (src, onFail) => {
+            const img = new Image();
+            img.onload = function() {
+                document.body.classList.add('loaded');
+                console.log('背景图片加载完成:', src);
+            };
+            img.onerror = function() {
+                if (typeof onFail === 'function') {
+                    onFail();
+                } else {
+                    console.log('背景图片加载失败，使用默认渐变背景:', src);
+                }
+            };
+            img.src = src;
         };
-        img.onerror = function() {
-            // 如果图片加载失败，保持渐变背景
-            console.log('背景图片加载失败，使用渐变背景:', backgroundImage);
-        };
-        img.src = backgroundImage;
+
+        // 计算候选地址：优先同名 .webp（如 erd.webp），失败回退原 JPG
+        const isWebpSupported = supportsWebp();
+        const webpCandidate = backgroundImage.replace(/\.[^.]+$/, '.webp');
+
+        if (isWebpSupported) {
+            tryLoad(webpCandidate, () => tryLoad(backgroundImage));
+        } else {
+            tryLoad(backgroundImage);
+        }
     }
 }
 

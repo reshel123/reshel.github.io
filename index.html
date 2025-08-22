@@ -3,6 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="智能助手与资源中心：AI 聊天、软件下载与丰富的交互体验，包含音乐、天气与多语言支持。">
+    <meta name="theme-color" content="#667eea">
+    <link rel="canonical" href="https://289872.xyz/index.html">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="黄金树立誓 - 智能助手与资源中心">
+    <meta property="og:description" content="AI 智能聊天与资源下载，一站式便捷体验。">
+    <meta property="og:image" content="erd.jpg">
+    <meta property="og:url" content="https://289872.xyz/index.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://music.163.com" crossorigin>
+    <link rel="preconnect" href="https://nu4wctjgeg.re.qweatherapi.com" crossorigin>
+    <link rel="preconnect" href="https://api.bigdatacloud.net" crossorigin>
+    <link rel="preconnect" href="https://nominatim.openstreetmap.org" crossorigin>
+    <link rel="preload" as="image" href="erd.webp">
+    <link rel="prefetch" href="ai-chat.html">
+    <link rel="prefetch" href="software-library.html">
     <title>黄金树立誓</title>
     <link rel="icon" href="icon.jpg" type="image/jpeg">
     <link rel="shortcut icon" href="icon.jpg" type="image/jpeg">
@@ -44,35 +60,105 @@
             z-index: -1;
         }
         
-        /* 加载动画 */
+        /* 现代化加载动画 */
         .loading-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #667eea 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            transition: opacity 0.5s ease;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         .loading-screen.hidden {
             opacity: 0;
+            transform: scale(1.1);
             pointer-events: none;
         }
         
+        .loading-content {
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .loading-logo {
+            font-size: 3.5rem;
+            margin-bottom: 2rem;
+            animation: logoFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+        }
+        
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .loading-title {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            letter-spacing: 2px;
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes titleGlow {
+            0% { text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); }
+            100% { text-shadow: 0 4px 20px rgba(255, 255, 255, 0.5); }
+        }
+        
+        .loading-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        
+        .loading-spinner-container {
+            position: relative;
+            margin: 2rem auto;
+            width: 120px;
+            height: 120px;
+        }
+        
         .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255, 255, 255, 0.2);
-            border-top: 4px solid #ffd700;
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #ffffff;
             border-radius: 50%;
-            animation: spin 1.2s linear infinite;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-            margin-left: 100px;
+            animation: spin 1.5s linear infinite;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+        }
+        
+        .loading-spinner::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: spin 2s linear infinite reverse;
         }
         
         @keyframes spin {
@@ -80,98 +166,199 @@
             100% { transform: rotate(360deg); }
         }
         
-        .loading-text {
-            color: white;
-            margin-top: 15px;
-            font-size: 18px;
-            text-align: center;
-            font-weight: 300;
-            letter-spacing: 1px;
+        .loading-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin: 2rem auto;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ffffff, #f0f0f0);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
         
         .loading-countdown {
-            color: #ffd700;
-            font-size: 20px;
+            color: #ffffff;
+            font-size: 1.5rem;
             font-weight: 600;
-            margin-bottom: 30px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin: 1rem 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            animation: countdownPulse 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes countdownPulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+        
+        .loading-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+            margin: 1rem 0;
+            font-weight: 400;
+            letter-spacing: 0.5px;
         }
         
         .loading-music {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 15px;
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            max-width: 300px;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .loading-music:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
         }
         
         .loading-music h4 {
             color: white;
-            margin-bottom: 15px;
-            font-size: 16px;
-            font-weight: 500;
+            margin-bottom: 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
             text-align: center;
             margin-top: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         
         .loading-music-controls {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
         
         .loading-music-btn {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.25));
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.3));
+            border: 1px solid rgba(255, 255, 255, 0.4);
             color: white;
-            padding: 12px 24px;
+            padding: 0.8rem 1.5rem;
             border-radius: 25px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.9rem;
             font-weight: 500;
             transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-            min-width: 120px;
+            backdrop-filter: blur(10px);
+            min-width: 100px;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         
         .loading-music-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.4);
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
         }
         
         .loading-music-info {
             color: rgba(255, 255, 255, 0.9);
-            font-size: 13px;
-            margin-top: 12px;
+            font-size: 0.9rem;
+            margin-top: 1rem;
             text-align: center;
-            font-weight: 400;
+            font-weight: 500;
+        }
+        
+        .loading-music-counter {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            text-align: center;
         }
         
         .loading-pc-tip {
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 300px;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            max-width: 350px;
             margin-left: auto;
             margin-right: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .loading-pc-tip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
         
         .loading-pc-tip p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1rem;
             text-align: center;
-            font-weight: 400;
+            font-weight: 500;
             margin: 0;
-            line-height: 1.4;
+            line-height: 1.5;
+        }
+        
+        /* 浮动装饰元素 */
+        .loading-decoration {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .floating-orb {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .floating-orb:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+        
+        .floating-orb:nth-child(2) {
+            width: 60px;
+            height: 60px;
+            top: 20%;
+            right: 15%;
+            animation-delay: 2s;
+        }
+        
+        .floating-orb:nth-child(3) {
+            width: 100px;
+            height: 100px;
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+        
+        .floating-orb:nth-child(4) {
+            width: 40px;
+            height: 40px;
+            bottom: 10%;
+            right: 10%;
+            animation-delay: 1s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
         }
         
         /* 浮动粒子效果 */
@@ -888,6 +1075,82 @@
                 height: 4px;
                 margin-top: 8px;
             }
+            
+            /* 降低移动端粒子数量 */
+            .particles { opacity: 0.7; }
+            
+            /* 移动端加载页优化 */
+            .loading-title {
+                font-size: 2rem;
+                letter-spacing: 1px;
+            }
+            
+            .loading-subtitle {
+                font-size: 1rem;
+                margin-bottom: 2rem;
+            }
+            
+            .loading-logo {
+                font-size: 3rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .loading-spinner-container {
+                width: 80px;
+                height: 80px;
+                margin: 1.5rem auto;
+            }
+            
+            .loading-progress {
+                width: 250px;
+                height: 5px;
+            }
+            
+            .loading-music {
+                margin-top: 2rem;
+                padding: 1.5rem;
+                max-width: 300px;
+            }
+            
+            .loading-music h4 {
+                font-size: 1rem;
+            }
+            
+            .loading-music-btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.8rem;
+                min-width: 80px;
+            }
+            
+            .loading-pc-tip {
+                margin: 1.5rem 0;
+                padding: 1rem;
+                max-width: 300px;
+            }
+            
+            .loading-pc-tip p {
+                font-size: 0.9rem;
+            }
+            
+            .floating-orb:nth-child(1) {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .floating-orb:nth-child(2) {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .floating-orb:nth-child(3) {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .floating-orb:nth-child(4) {
+                width: 30px;
+                height: 30px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -921,6 +1184,79 @@
             .music-controls {
                 gap: 10px;
             }
+            
+            /* 超小屏幕加载页优化 */
+            .loading-title {
+                font-size: 1.8rem;
+                letter-spacing: 0.5px;
+            }
+            
+            .loading-subtitle {
+                font-size: 0.9rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .loading-logo {
+                font-size: 2.5rem;
+                margin-bottom: 1rem;
+            }
+            
+            .loading-spinner-container {
+                width: 60px;
+                height: 60px;
+                margin: 1rem auto;
+            }
+            
+            .loading-progress {
+                width: 200px;
+                height: 4px;
+            }
+            
+            .loading-music {
+                margin-top: 1.5rem;
+                padding: 1rem;
+                max-width: 280px;
+            }
+            
+            .loading-music h4 {
+                font-size: 0.9rem;
+            }
+            
+            .loading-music-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.7rem;
+                min-width: 70px;
+            }
+            
+            .loading-pc-tip {
+                margin: 1rem 0;
+                padding: 0.8rem;
+                max-width: 280px;
+            }
+            
+            .loading-pc-tip p {
+                font-size: 0.8rem;
+            }
+            
+            .floating-orb:nth-child(1) {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .floating-orb:nth-child(2) {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .floating-orb:nth-child(3) {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .floating-orb:nth-child(4) {
+                width: 20px;
+                height: 20px;
+            }
         }
         
         /* 加载动画 */
@@ -948,13 +1284,31 @@
     </style>
 </head>
 <body>
-    <!-- 加载屏幕 -->
+    <!-- 现代化加载屏幕 -->
     <div class="loading-screen" id="loadingScreen">
-        <div style="text-align: center;">
-            <div class="loading-countdown" id="loadingCountdown">大约九十秒</div>
+        <!-- 浮动装饰元素 -->
+        <div class="loading-decoration">
+            <div class="floating-orb"></div>
+            <div class="floating-orb"></div>
+            <div class="floating-orb"></div>
+            <div class="floating-orb"></div>
+        </div>
+        
+        <div class="loading-content">
+            <div class="loading-logo">🌳</div>
+            <div class="loading-title">黄金树立誓</div>
+            <div class="loading-subtitle">智能助手与资源中心</div>
             
-            <div class="loading-spinner"></div>
-            <div class="loading-text">正在加载精彩内容...</div>
+            <div class="loading-spinner-container">
+                <div class="loading-spinner"></div>
+            </div>
+            
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loadingProgressBar"></div>
+            </div>
+            
+            <div class="loading-countdown" id="loadingCountdown">正在准备体验...</div>
+            <div class="loading-text">正在加载精彩内容，请稍候...</div>
             
             <!-- PC端访问提示 -->
             <div class="loading-pc-tip">
@@ -963,12 +1317,12 @@
             
             <!-- 加载时音乐播放器 -->
             <div class="loading-music">
+                <h4>🎵 等待时听听音乐</h4>
                 <div class="loading-music-controls">
                     <button class="loading-music-btn" id="loadingPlayBtn">▶️ 播放</button>
                     <button class="loading-music-btn" id="loadingPauseBtn" style="display: none;">⏸️ 暂停</button>
                     <button class="loading-music-btn" id="loadingSwitchBtn" title="切换歌曲">🔄</button>
                 </div>
-                <h4>🎵 等待时听听音乐</h4>
                 <div class="loading-music-info" id="loadingMusicInfo">Landslide - Oh Wonder</div>
                 <div class="loading-music-counter" id="loadingMusicCounter">1/3</div>
             </div>
@@ -1002,7 +1356,7 @@
                     <button class="switch-btn" id="switchBtn" title="随机切换歌曲">🔄</button>
                 </div>
                 <div class="music-info" id="musicInfo">Story of us - July</div>
-                <div class="music-counter" id="musicCounter">1/8</div>
+                <div class="music-counter" id="musicCounter">1/11</div>
                 <div class="music-progress">
                     <div class="music-progress-bar" id="progressBar"></div>
                 </div>
@@ -1068,7 +1422,8 @@
         // 创建浮动粒子
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
-            const particleCount = 50;
+            const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+            const particleCount = isMobile ? 20 : 50;
             
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
@@ -1171,6 +1526,19 @@
             {
                 url: 'https://music.163.com/song/media/outer/url?id=227693.mp3',
                 name: '一点点喜欢 - 邓福如 AFÜ'
+            },
+            // 从加载页添加的歌曲
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1846511389.mp3',
+                name: 'Landslide - Oh Wonder'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=2086154795.mp3',
+                name: 'Tek It - Cream Pie'
+            },
+            {
+                url: 'https://music.163.com/song/media/outer/url?id=1862710424.mp3',
+                name: 'Stay - The Kid LAROI/Justin Bieber'
             }
         ];
         
@@ -1517,6 +1885,12 @@
             const totalTasks = loadingTasks.length;
             loadingProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
             
+            // 更新进度条
+            const progressBar = document.getElementById('loadingProgressBar');
+            if (progressBar) {
+                progressBar.style.width = loadingProgress + '%';
+            }
+            
             const countdownElement = document.getElementById('loadingCountdown');
             if (countdownElement) {
                 if (loadingProgress >= 100) {
@@ -1527,8 +1901,16 @@
                             hideLoadingScreen();
                         }, 1000);
                     }
+                } else if (loadingProgress >= 80) {
+                    countdownElement.textContent = '即将完成...';
+                } else if (loadingProgress >= 60) {
+                    countdownElement.textContent = '加载进度良好...';
+                } else if (loadingProgress >= 40) {
+                    countdownElement.textContent = '正在加载核心功能...';
+                } else if (loadingProgress >= 20) {
+                    countdownElement.textContent = '初始化系统...';
                 } else {
-                    countdownElement.textContent = `加载中... ${Math.round(loadingProgress)}%`;
+                    countdownElement.textContent = '正在准备体验...';
                 }
             }
         }
@@ -1537,22 +1919,36 @@
         function startSmartCountdown() {
             let seconds = 0;
             const countdownElement = document.getElementById('loadingCountdown');
+            const progressBar = document.getElementById('loadingProgressBar');
             
             const countdownInterval = setInterval(() => {
                 seconds++;
                 if (!isFullyLoaded) {
-                    if (seconds <= 30) {
-                        countdownElement.textContent = `正在加载... ${seconds}秒`;
-                    } else if (seconds <= 60) {
-                        countdownElement.textContent = `加载较慢，请耐心等待... ${seconds}秒`;
+                    // 模拟进度条动画
+                    if (progressBar) {
+                        const simulatedProgress = Math.min(seconds * 20, 100);
+                        progressBar.style.width = simulatedProgress + '%';
+                    }
+                    
+                    if (seconds <= 2) {
+                        countdownElement.textContent = '正在准备体验...';
+                    } else if (seconds <= 4) {
+                        countdownElement.textContent = '初始化系统...';
+                    } else if (seconds <= 6) {
+                        countdownElement.textContent = '正在加载核心功能...';
+                    } else if (seconds <= 8) {
+                        countdownElement.textContent = '加载进度良好...';
                     } else {
-                        countdownElement.textContent = `加载时间较长，即将强制进入... ${seconds}秒`;
-                        if (seconds >= 90) {
+                        countdownElement.textContent = '即将完成...';
+                        if (seconds >= 10) {
                             clearInterval(countdownInterval);
+                            if (progressBar) {
+                                progressBar.style.width = '100%';
+                            }
                             countdownElement.textContent = '加载完成！';
                             setTimeout(() => {
                                 hideLoadingScreen();
-                            }, 1000);
+                            }, 500);
                         }
                     }
                 } else {
@@ -1621,30 +2017,62 @@
             console.log('==================');
         }
         
-        // 图片预加载函数
+        // 图片预加载函数（优先WebP）
         function preloadBackgroundImage() {
+            const webpImage = 'erd.webp';
+            const jpgImage = 'erd.jpg';
+            
+            // 先尝试加载WebP
             const img = new Image();
             img.onload = function() {
+                document.body.style.backgroundImage = `url('${webpImage}')`;
                 document.body.classList.add('loaded');
+                console.log('WebP背景图片加载完成:', webpImage);
                 markTaskComplete('backgroundImage');
             };
             img.onerror = function() {
-                console.log('背景图片加载失败，使用默认渐变背景');
-                markTaskComplete('backgroundImage');
+                // WebP加载失败，回退到JPG
+                console.log('WebP加载失败，回退到JPG');
+                const jpgImg = new Image();
+                jpgImg.onload = function() {
+                    document.body.style.backgroundImage = `url('${jpgImage}')`;
+                    document.body.classList.add('loaded');
+                    console.log('JPG背景图片加载完成:', jpgImage);
+                    markTaskComplete('backgroundImage');
+                };
+                jpgImg.onerror = function() {
+                    console.log('所有背景图片加载失败，使用默认渐变背景');
+                    markTaskComplete('backgroundImage');
+                };
+                jpgImg.src = jpgImage;
             };
-            img.src = 'erd.jpg';
+            img.src = webpImage;
         }
         
-        // 快速预加载背景图片（用于返回时）
+        // 快速预加载背景图片（用于返回时，优先WebP）
         function quickPreloadBackgroundImage() {
+            const webpImage = 'erd.webp';
+            const jpgImage = 'erd.jpg';
+            
+            // 先尝试加载WebP
             const img = new Image();
             img.onload = function() {
+                document.body.style.backgroundImage = `url('${webpImage}')`;
                 document.body.classList.add('loaded');
             };
             img.onerror = function() {
-                console.log('背景图片加载失败，使用默认渐变背景');
+                // WebP加载失败，回退到JPG
+                const jpgImg = new Image();
+                jpgImg.onload = function() {
+                    document.body.style.backgroundImage = `url('${jpgImage}')`;
+                    document.body.classList.add('loaded');
+                };
+                jpgImg.onerror = function() {
+                    console.log('背景图片加载失败，使用默认渐变背景');
+                };
+                jpgImg.src = jpgImage;
             };
-            img.src = 'erd.jpg';
+            img.src = webpImage;
         }
         
         // 快速加载缓存的天气数据（用于返回时）

@@ -3,6 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI 智能助手：多模型对话、标签会话、轻量界面与流畅体验。">
+    <meta name="theme-color" content="#667eea">
+    <link rel="canonical" href="https://289872.xyz/ai-chat.html">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="黄金树恩惠 - AI 智能助手">
+    <meta property="og:description" content="支持 GPT-4o、DeepSeek 等多模型的中文对话助手，简单好用。">
+    <meta property="og:image" content="aiph.jpg">
+    <meta property="og:url" content="ai-chat.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://api.chatanywhere.com.cn" crossorigin>
+    <link rel="preload" as="image" href="aiph.webp">
+    <link rel="prefetch" href="index.html">
+    <link rel="prefetch" href="software-library.html">
     <title>黄金树恩惠</title>
     <style>
         * {
@@ -21,9 +34,16 @@
             min-height: 100vh;
         }
         
-        /* 背景图片懒加载 */
+        /* 背景图片懒加载（优先WebP） */
         body.loaded {
-            background-image: url('aiph.jpg');
+            background-image: url('aiph.webp');
+        }
+        
+        /* WebP不支持时的回退 */
+        @supports not (background-image: url('aiph.webp')) {
+            body.loaded {
+                background-image: url('aiph.jpg');
+            }
         }
         
         .container {
@@ -417,18 +437,37 @@
             setupEventListeners();
         });
         
-        // 预加载背景图片
+        // 预加载背景图片（优先WebP）
         function preloadBackgroundImage() {
+            const webpImage = 'aiph.webp';
+            const jpgImage = 'aiph.jpg';
+            
+            // 先尝试加载WebP
             const img = new Image();
             img.onload = function() {
-                // 图片加载完成后，应用背景
+                document.body.style.backgroundImage = `url('${webpImage}')`;
                 document.body.classList.add('loaded');
+                console.log('WebP背景图片加载完成:', webpImage);
+                // 标记任务完成（如果存在任务系统）
+                if (typeof markTaskComplete === 'function') {
+                    markTaskComplete('backgroundImage');
+                }
             };
             img.onerror = function() {
-                // 如果图片加载失败，保持渐变背景
-                console.log('背景图片加载失败，使用渐变背景');
+                // WebP加载失败，回退到JPG
+                console.log('WebP加载失败，回退到JPG');
+                const jpgImg = new Image();
+                jpgImg.onload = function() {
+                    document.body.style.backgroundImage = `url('${jpgImage}')`;
+                    document.body.classList.add('loaded');
+                    console.log('JPG背景图片加载完成:', jpgImage);
+                };
+                jpgImg.onerror = function() {
+                    console.log('所有背景图片加载失败，使用渐变背景');
+                };
+                jpgImg.src = jpgImage;
             };
-            img.src = 'aiph.jpg';
+            img.src = webpImage;
         }
         
         const API_KEY = 'sk-9t0AEZrukDcXuPyqfNDw4FHHO0gWlF8rNLNDCdnylgHUy78U';

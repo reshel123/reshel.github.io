@@ -3,6 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="资源下载中心：Windows 应用、安卓应用与媒体文件，一站式快捷下载。">
+    <meta name="theme-color" content="#667eea">
+    <link rel="canonical" href="https://289872.xyz/software-library.html">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="资源下载中心 - 赛博疯子">
+    <meta property="og:description" content="精选软件与多媒体资源，支持分类筛选与快速下载。">
+    <meta property="og:image" content="dow.jpg">
+    <meta property="og:url" content="software-library.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://wwzd.lanzouu.com" crossorigin>
+    <link rel="preconnect" href="https://t07isdi9k.hn-bkt.clouddn.com" crossorigin>
+    <link rel="preload" as="image" href="dow.webp">
+    <link rel="prefetch" href="index.html">
+    <link rel="prefetch" href="ai-chat.html">
             <title>赛博疯子</title>
     <link rel="icon" href="icon.jpg" type="image/jpeg">
     <link rel="shortcut icon" href="icon.jpg" type="image/jpeg">
@@ -16,7 +30,7 @@
         }
         
         body {
-            background-image: url('dow.jpg');
+            background-image: url('dow.webp');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -24,6 +38,13 @@
             position: relative;
             min-height: 100vh;
             width: 100%;
+        }
+        
+        /* WebP不支持时的回退 */
+        @supports not (background-image: url('dow.webp')) {
+            body {
+                background-image: url('dow.jpg');
+            }
         }
         
         /* 背景遮罩 */
@@ -733,8 +754,38 @@
             window.location.href = 'index.html';
         }
         
+        // 预加载背景图片（优先WebP）
+        function preloadBackgroundImage() {
+            const webpImage = 'dow.webp';
+            const jpgImage = 'dow.jpg';
+            
+            // 先尝试加载WebP
+            const img = new Image();
+            img.onload = function() {
+                document.body.style.backgroundImage = `url('${webpImage}')`;
+                console.log('WebP背景图片加载完成:', webpImage);
+            };
+            img.onerror = function() {
+                // WebP加载失败，回退到JPG
+                console.log('WebP加载失败，回退到JPG');
+                const jpgImg = new Image();
+                jpgImg.onload = function() {
+                    document.body.style.backgroundImage = `url('${jpgImage}')`;
+                    console.log('JPG背景图片加载完成:', jpgImage);
+                };
+                jpgImg.onerror = function() {
+                    console.log('所有背景图片加载失败，使用默认背景');
+                };
+                jpgImg.src = jpgImage;
+            };
+            img.src = webpImage;
+        }
+        
         // 初始化页面
         document.addEventListener('DOMContentLoaded', function() {
+            // 预加载背景图片
+            preloadBackgroundImage();
+            
             renderSoftwareList();
             setupEventListeners();
             createParticles(); // 创建粒子效果
