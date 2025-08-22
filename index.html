@@ -97,25 +97,48 @@
         }
         
         .loading-logo {
-            font-size: 3.5rem;
-            margin-bottom: 2rem;
-            animation: logoFloat 3s ease-in-out infinite;
-            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+            font-size: 4.5rem;
+            margin-top: 3rem;
+            margin-bottom: 2.5rem;
+            animation: logoSparkle 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 20px rgba(255, 215, 0, 0.4));
+            background: linear-gradient(135deg, #FFD700, #FFA500, #FF69B4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        @keyframes logoFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+        @keyframes logoSparkle {
+            0%, 100% { 
+                transform: translateY(0px) rotate(0deg) scale(1);
+                filter: drop-shadow(0 10px 20px rgba(255, 215, 0, 0.4));
+            }
+            25% { 
+                transform: translateY(-15px) rotate(90deg) scale(1.1);
+                filter: drop-shadow(0 15px 25px rgba(255, 215, 0, 0.6));
+            }
+            50% { 
+                transform: translateY(-20px) rotate(180deg) scale(1.2);
+                filter: drop-shadow(0 20px 30px rgba(255, 215, 0, 0.8));
+            }
+            75% { 
+                transform: translateY(-15px) rotate(270deg) scale(1.1);
+                filter: drop-shadow(0 15px 25px rgba(255, 215, 0, 0.6));
+            }
         }
         
         .loading-title {
             color: white;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
+            font-size: 3.2rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
             text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             animation: titleGlow 2s ease-in-out infinite alternate;
+            background: linear-gradient(135deg, #ffffff, #f0f0f0, #e0e0e0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         @keyframes titleGlow {
@@ -133,7 +156,7 @@
         
         .loading-spinner-container {
             position: relative;
-            margin: 2rem auto;
+            margin: 1.5rem auto;
             width: 120px;
             height: 120px;
         }
@@ -1052,6 +1075,53 @@
             .music-player {
                 min-width: 180px;
                 max-width: 220px;
+            }
+            
+            /* 移动端加载页样式 */
+            .loading-logo {
+                font-size: 3.5rem;
+                margin-top: 2rem;
+                margin-bottom: 2rem;
+            }
+            
+            .loading-title {
+                font-size: 2.5rem;
+                margin-bottom: 1.5rem;
+                letter-spacing: 2px;
+            }
+            
+            .loading-spinner-container {
+                margin: 1rem auto;
+                width: 100px;
+                height: 100px;
+            }
+            
+            .loading-progress {
+                width: 250px;
+                margin: 1.5rem auto;
+            }
+            
+            .loading-countdown {
+                font-size: 1.2rem;
+            }
+            
+            .loading-text {
+                font-size: 0.9rem;
+            }
+            
+            .loading-music {
+                max-width: 300px;
+                padding: 1.5rem;
+                margin-top: 2rem;
+            }
+            
+            .loading-pc-tip {
+                max-width: 300px;
+                padding: 1rem;
+                margin: 1.5rem auto;
+            }
+            
+            .music-player {
                 top: 5px;
                 right: 60px;
                 padding: 12px;
@@ -1198,6 +1268,7 @@
             
             .loading-logo {
                 font-size: 2.5rem;
+                margin-top: 1.5rem;
                 margin-bottom: 1rem;
             }
             
@@ -1295,9 +1366,8 @@
         </div>
         
         <div class="loading-content">
-            <div class="loading-logo">🌳</div>
-            <div class="loading-title">黄金树立誓</div>
-            <div class="loading-subtitle">智能助手与资源中心</div>
+            <div class="loading-logo">✨</div>
+            <div class="loading-title">你好！</div>
             
             <div class="loading-spinner-container">
                 <div class="loading-spinner"></div>
