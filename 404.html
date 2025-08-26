@@ -19,10 +19,31 @@
                 if (path === '/' || path === '') return; // home stays home
                 // remove trailing slashes for consistency
                 path = path.replace(/\/+$/, '');
-                // Map "/foo" -> "/foo.html"
+                // Legacy route remapping (old -> new)
+                var legacyMap = {
+                    '/ai-painting': '/ai/painting',
+                    '/ai-chat': '/ai',
+                    '/software-library': '/downloads',
+                    '/game-page': '/games',
+                    '/secret-page': '/secret',
+                    '/games/snake-game': '/games/snake',
+                    '/games/tetris-game': '/games/tetris',
+                    '/games/flappy-game': '/games/flappy',
+                    '/games/puzzle-game': '/games/puzzle',
+                    '/games/memory-game': '/games/memory',
+                    '/games/breakout-game': '/games/breakout'
+                };
+                if (legacyMap[path]) {
+                    loc.replace(legacyMap[path] + loc.search + loc.hash);
+                    return;
+                }
+
+                // Map "/foo" -> "/foo.html" (but do not append repeatedly)
                 // Map "/dir/" -> "/dir/index.html"
                 var target;
-                if (path.endsWith('/index')) {
+                if (path.endsWith('.html')) {
+                    target = path; // already has .html
+                } else if (path.endsWith('/index')) {
                     target = path + '.html';
                 } else if (path.endsWith('/')) {
                     target = path + 'index.html';
