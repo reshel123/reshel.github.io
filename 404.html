@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在跳转...</title>
+    <meta http-equiv="refresh" content="3;url=/">
+    <style>
+        body { display:flex; align-items:center; justify-content:center; height:100vh; margin:0; font-family: Arial, Helvetica, sans-serif; background:#0f172a; color:#e2e8f0; }
+        .box { text-align:center; }
+        .hint { opacity:0.8; font-size:14px; margin-top:8px; }
+        a { color:#93c5fd; }
+    </style>
+    <script>
+        (function() {
+            try {
+                var loc = window.location;
+                var path = loc.pathname;
+                if (path === '/' || path === '') return; // home stays home
+                // remove trailing slashes for consistency
+                path = path.replace(/\/+$/, '');
+                // Map "/foo" -> "/foo.html"
+                // Map "/dir/" -> "/dir/index.html"
+                var target;
+                if (path.endsWith('/index')) {
+                    target = path + '.html';
+                } else if (path.endsWith('/')) {
+                    target = path + 'index.html';
+                } else {
+                    target = path + '.html';
+                }
+                var url = target + loc.search + loc.hash;
+                // Use replace so 404 doesn't stay in history
+                loc.replace(url);
+            } catch (e) {
+                // noop
+            }
+        })();
+    </script>
+    <noscript>
+        <meta http-equiv="refresh" content="0; url=/">
+    </noscript>
+</head>
+<body>
+    <div class="box">
+        <h1>正在跳转到正确的页面...</h1>
+        <p class="hint">如果没有自动跳转，请返回 <a href="/">首页</a></p>
+    </div>
+</body>
+</html>
+

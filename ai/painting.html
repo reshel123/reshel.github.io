@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI绘画生成器：输入提示词，生成精美AI图片，支持下载和分享。">
+    <meta name="theme-color" content="#667eea">
+    <link rel="canonical" href="https://289872.xyz/ai/painting">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="AI绘画生成器 - 赛博疯子">
+    <meta property="og:description" content="智能AI绘画，让创意无限可能。">
+    <meta property="og:image" content="/assets/img/aiph.jpg">
+    <meta property="og:url" content="/ai/painting">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://qianfan.baidubce.com" crossorigin>
+    <link rel="preload" as="image" href="/assets/img/aiph.webp">
+    <link rel="prefetch" href="/">
+    <link rel="prefetch" href="/ai-chat">
+    <title>AI绘画生成器 - 赛博疯子</title>
+    <link rel="icon" href="/assets/img/icon.jpg" type="image/jpeg">
+    <link rel="shortcut icon" href="/assets/img/icon.jpg" type="image/jpeg">
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* 背景图片懒加载 */
+        body.loaded {
+            background-image: url('/assets/img/aiph.webp');
+        }
+        
+        @supports not (background-image: url('/assets/img/aiph.webp')) {
+            body.loaded {
+                background-image: url('/assets/img/aiph.jpg');
+            }
+        }
+        
+        /* 背景遮罩 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            min-height: calc(100vh - 40px);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0;
+            animation: fadeIn 1s ease-out 0.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* 头部样式 */
+        header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideDown 1s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from { 
+                transform: translateY(-50px); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0); 
+                opacity: 1; 
+            }
+        }
+        
+        header h1 {
+            color: #ffffff;
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+        
+        header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1em;
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* 导航按钮 */
+        .nav-buttons {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            text-decoration: none;
+            display: inline-block;
+            animation: fadeInUp 1s ease-out 0.6s both;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* 主要内容区域 */
+        main {
+            flex: 1;
+            padding: 30px;
+            animation: slideUp 1s ease-out 1.4s both;
+        }
+        
+        @keyframes slideUp {
+            from { 
+                transform: translateY(50px); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0); 
+                opacity: 1; 
+            }
+        }
+        
+        /* 提示词输入区域 */
+        .prompt-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 1s ease-out 0.8s both;
+        }
+        
+        .prompt-section h2 {
+            color: #ffffff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .prompt-input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .prompt-input {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .prompt-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .prompt-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+        
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-width: 120px;
+        }
+        
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* 生成选项 */
+        .generation-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .option-group label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .option-group select,
+        .option-group input {
+            padding: 10px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .option-group select option {
+            background: #2c3e50;
+            color: white;
+        }
+        
+        /* 生成状态显示 */
+        .generation-status {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .generation-status.active {
+            display: block;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .status-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        /* 图片展示区域 */
+        .image-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 1s ease-out 1s both;
+        }
+        
+        .image-section h2 {
+            color: #ffffff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .image-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+        
+                 .generated-image {
+             width: 100%;
+             height: 250px;
+             object-fit: cover;
+             border-radius: 10px;
+             margin-bottom: 15px;
+             background: rgba(255, 255, 255, 0.1);
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             color: rgba(255, 255, 255, 0.6);
+             font-size: 14px;
+             transition: all 0.3s ease;
+             position: relative;
+         }
+         
+         .generated-image:hover {
+             transform: scale(1.02);
+             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+         }
+         
+         .generated-image::after {
+             content: '👁️ 点击预览';
+             position: absolute;
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%);
+             background: rgba(0, 0, 0, 0.7);
+             color: white;
+             padding: 8px 16px;
+             border-radius: 20px;
+             font-size: 12px;
+             opacity: 0;
+             transition: opacity 0.3s ease;
+             pointer-events: none;
+         }
+         
+         .generated-image:hover::after {
+             opacity: 1;
+         }
+        
+        .image-info {
+            margin-bottom: 15px;
+        }
+        
+        .image-prompt {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        
+        .image-meta {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .image-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .download-btn {
+            background: rgba(76, 175, 80, 0.3);
+            color: white;
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+        
+        .download-btn:hover {
+            background: rgba(76, 175, 80, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        
+        
+        .delete-btn {
+            background: rgba(244, 67, 54, 0.3);
+            color: white;
+            border: 1px solid rgba(244, 67, 54, 0.5);
+        }
+        
+                 .delete-btn:hover {
+             background: rgba(244, 67, 54, 0.4);
+             transform: translateY(-2px);
+         }
+         
+         .copy-btn {
+             background: rgba(156, 39, 176, 0.3);
+             color: white;
+             border: 1px solid rgba(156, 39, 176, 0.5);
+         }
+         
+         .copy-btn:hover {
+             background: rgba(156, 39, 176, 0.4);
+             transform: translateY(-2px);
+         }
+         
+
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .empty-state p {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            header {
+                padding: 20px;
+            }
+            
+            header h1 {
+                font-size: 2em;
+            }
+            
+            main {
+                padding: 20px;
+            }
+            
+            .prompt-input-group {
+                flex-direction: column;
+            }
+            
+            .prompt-input {
+                min-width: auto;
+            }
+            
+            .generation-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .image-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-buttons {
+                position: relative;
+                top: auto;
+                right: auto;
+                justify-content: center;
+                margin-top: 20px;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffffff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 浮动粒子效果 */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+                 @keyframes float {
+             0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
+             50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+         }
+         
+         /* 复制成功提示动画 */
+         @keyframes slideInRight {
+             from { transform: translateX(100%); opacity: 0; }
+             to { transform: translateX(0); opacity: 1; }
+         }
+         
+         @keyframes slideOutRight {
+             from { transform: translateX(0); opacity: 1; }
+             to { transform: translateX(100%); opacity: 0; }
+         }
+         
+
+        
+        /* 页脚 */
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            border-radius: 0 0 20px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideUp 1s ease-out 0.6s both;
+        }
+    </style>
+</head>
+<body>
+    <!-- 浮动粒子 -->
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <header>
+            <h1>🎨 AI绘画生成器</h1>
+            <p>输入您的创意描述，让AI为您创作精美图片</p>
+            
+            <!-- 导航按钮 -->
+            <div class="nav-buttons">
+                <a href="/ai" class="nav-btn">💬 AI聊天</a>
+                <a href="/" class="nav-btn">🏠 返回首页</a>
+            </div>
+        </header>
+        
+        <main>
+            <!-- 提示词输入区域 -->
+            <div class="prompt-section">
+                <h2>✨ 创作提示</h2>
+                <div class="prompt-input-group">
+                    <input type="text" class="prompt-input" id="promptInput" 
+                           placeholder="描述您想要生成的图片，例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格" 
+                           maxlength="200"> <!-- 初始设置为irag-1.0的200字符限制 -->
+                    <button class="generate-btn" id="generateBtn" onclick="generateImage()">
+                        <span class="loading-spinner" id="loadingSpinner" style="display: none;"></span>
+                        🎨 生成图片
+                    </button>
+                </div>
+                
+                <!-- 生成选项 -->
+                <div class="generation-options">
+                    <div class="option-group">
+                        <label for="modelSelect">模型选择</label>
+                        <select id="modelSelect">
+                            <option value="irag-1.0">ERNIE IRAG (200字符)</option>
+                            <option value="flux.1-schnell">FLUX.1-schnell (512字符，仅支持英文)</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="imageSize">图片尺寸</label>
+                        <select id="imageSize">
+                            <option value="1024x1024">1024×1024 (正方形)</option>
+                            <option value="1024x1792">1024×1792 (竖版)</option>
+                            <option value="1792x1024">1792×1024 (横版)</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="imageCount">生成数量</label>
+                        <select id="imageCount">
+                            <option value="1">1张</option>
+                            <option value="2">2张</option>
+                            <option value="3">3张</option>
+                            <option value="4">4张</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 生成状态显示 -->
+            <div class="generation-status" id="generationStatus">
+                <div class="status-text" id="statusText">正在生成您的创意图片...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="statusDetails">请耐心等待，AI正在创作中...</div>
+            </div>
+            
+            <!-- 图片展示区域 -->
+            <div class="image-section">
+                <h2>🖼️ 生成的作品</h2>
+                <div id="imageGrid" class="image-grid">
+                    <div class="empty-state">
+                        <h3>🎨 开始您的创作之旅</h3>
+                        <p>在上方输入您的创意描述，点击生成按钮，AI将为您创作独特的图片作品</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>© 2025 | AI绘画生成器 | 作者：黄金树</p>
+        </footer>
+    </div>
+    
+    <script>
+        // 全局变量
+        let generatedImages = [];
+        let isGenerating = false;
+        
+        // 千帆ModelBuilder API配置
+        const AI_PAINTING_CONFIG = {
+            apiKey: 'bce-v3/ALTAK-ebb6lG4iSCzFMAnEMcwqW/388eb5d7642e42aa96b933903770a75a221bf30d', // 您的千帆ModelBuilder API Key
+            endpoint: 'https://qianfan.baidubce.com/v2/images/generations', // 千帆ModelBuilder的图像生成接口
+        };
+        
+        // 由于千帆ModelBuilder API直接使用API Key鉴权，不需要Access Token，此函数不再使用
+        async function getBaiduAccessToken() {
+            return null;
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置返回标记，用于优化首页加载
+            sessionStorage.setItem('returningFromOtherPage', 'true');
+            
+            initializePage();
+            createParticles();
+        });
+        
+        // 初始化页面
+        function initializePage() {
+            // 快速初始化核心功能
+            loadSavedImages(); // 加载已保存的图片
+            setupEventListeners(); // 设置事件监听器
+            
+            // 异步加载背景图片，不阻塞页面交互
+            setTimeout(() => {
+                preloadBackgroundImage();
+            }, 100);
+            
+            // 初始渲染一次，确保空状态显示正确
+            if (generatedImages.length === 0) {
+                renderImageGrid();
+            }
+            // 根据初始模型设置maxlength
+            updatePromptMaxLength();
+        }
+        
+        // 预加载背景图片
+        function preloadBackgroundImage() {
+            const webpImage = '/assets/img/aiph.webp';
+            const jpgImage = '/assets/img/aiph.jpg';
+            
+            // 优先尝试WebP格式
+            const img = new Image();
+            img.onload = function() {
+                document.body.classList.add('loaded');
+                console.log('背景图片加载完成:', webpImage);
+            };
+            img.onerror = function() {
+                // WebP加载失败，回退到JPG
+                const jpgImg = new Image();
+                jpgImg.onload = function() {
+                    document.body.classList.add('loaded');
+                    console.log('背景图片加载完成:', jpgImage);
+                };
+                jpgImg.onerror = function() {
+                    console.log('背景图片加载失败，使用默认渐变背景');
+                };
+                jpgImg.src = jpgImage;
+            };
+            img.src = webpImage;
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 提示词输入框回车键生成
+            const promptInput = document.getElementById('promptInput');
+            promptInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !isGenerating && !e.shiftKey) { // 避免Shift+Enter换行也触发
+                    e.preventDefault(); // 阻止默认的回车行为
+                    generateImage();
+                }
+            });
+            
+            // 模型选择变化时更新prompt的maxlength
+            document.getElementById('modelSelect').addEventListener('change', updatePromptMaxLength);
+
+            // 提示词输入框实时字数统计
+            promptInput.addEventListener('input', function() {
+                const maxLength = parseInt(this.getAttribute('maxlength'));
+                const currentLength = this.value.length;
+                // 这里可以根据需要添加一个字数显示元素，但目前样式中没有直接的charCount元素，只是通过边框颜色变化来提示
+                if (currentLength > maxLength * 0.8) {
+                    this.style.borderColor = currentLength > maxLength ? '#ff6b6b' : '#ffa726';
+                } else {
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                }
+            });
+        }
+
+        // 根据所选模型更新提示词输入框的最大长度
+        function updatePromptMaxLength() {
+            const modelSelect = document.getElementById('modelSelect');
+            const promptInput = document.getElementById('promptInput');
+            const selectedModel = modelSelect.value;
+            let maxLength = 500; // 默认值，以防万一
+
+            if (selectedModel === 'irag-1.0') {
+                maxLength = 200;
+            } else if (selectedModel === 'flux.1-schnell') {
+                maxLength = 512;
+            }
+            promptInput.setAttribute('maxlength', maxLength);
+            // 确保当前文本没有超出新的maxLength
+            if (promptInput.value.length > maxLength) {
+                promptInput.value = promptInput.value.substring(0, maxLength);
+            }
+            // 触发一次input事件以更新边框颜色等样式
+            promptInput.dispatchEvent(new Event('input'));
+        }
+        
+        // 生成图片主函数
+        async function generateImage() {
+            if (isGenerating) {
+                return;
+            }
+            
+            const promptInput = document.getElementById('promptInput');
+            const prompt = promptInput.value.trim();
+            const currentMaxLength = parseInt(promptInput.getAttribute('maxlength'));
+            
+            if (!prompt) {
+                alert('请输入图片描述');
+                promptInput.focus();
+                return;
+            }
+            
+            if (prompt.length > currentMaxLength) {
+                alert(`描述文字不能超过${currentMaxLength}个字符`);
+                return;
+            }
+            
+            // 开始生成
+            isGenerating = true;
+            showGenerationStatus(true);
+            updateStatusText('正在准备生成...');
+            updateProgress(0); // 重置进度条
+            
+            try {
+                // 获取生成参数
+                const params = getGenerationParams(prompt);
+                
+                let imageResult;
+                
+                // 使用千帆ModelBuilder API
+                updateStatusText('正在调用千帆ModelBuilder生成图片...');
+                imageResult = await callQianfanModelBuilderAPI(params);
+                
+                if (!imageResult.success || !imageResult.imageUrl) {
+                    throw new Error('图片生成失败或未返回图片URL');
+                }
+                
+                // 生成成功
+                const generatedImage = {
+                    id: Date.now(),
+                    prompt: prompt,
+                    imageUrl: imageResult.imageUrl,
+                    timestamp: new Date().toLocaleString(),
+                    params: { // 只保存千帆API实际使用的参数
+                        model: document.getElementById('modelSelect').value,
+                        size: document.getElementById('imageSize').value,
+                        count: parseInt(document.getElementById('imageCount').value),
+                    },
+                    taskId: imageResult.taskId
+                };
+                
+                // 添加到图片列表
+                generatedImages.unshift(generatedImage);
+                
+                // 保存到本地存储
+                saveImagesToStorage();
+                
+                // 更新显示
+                renderImageGrid();
+                
+                // 显示成功消息
+                updateStatusText('图片生成成功！');
+                promptInput.value = ''; // 清空输入框
+                promptInput.style.borderColor = 'rgba(255, 255, 255, 0.3)'; // 恢复边框颜色
+                setTimeout(() => {
+                    showGenerationStatus(false);
+                }, 2000);
+                
+                         } catch (error) {
+                 console.error('生成失败:', error);
+                 const errorMessage = error.message || '未知错误';
+                 
+                 // 根据错误类型提供具体的解决建议
+                 let solutionTips = '';
+                 if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+                     solutionTips = '请求过于频繁，请稍后再试或检查API配额';
+                 } else if (errorMessage.includes('API Key') || errorMessage.includes('Authorization')) {
+                     solutionTips = 'API密钥无效，请检查配置';
+                 } else if (errorMessage.includes('网络') || errorMessage.includes('fetch')) {
+                     solutionTips = '网络连接问题，请检查网络设置';
+                 } else if (errorMessage.includes('CORS') || errorMessage.includes('跨域')) {
+                     solutionTips = '跨域访问限制，请检查API配置';
+                 } else {
+                     solutionTips = '请检查网络连接和API配置';
+                 }
+                 
+                 // 立即重置进度条
+                 updateProgress(0);
+                 
+                 // 在页面上显示详细的错误提示
+                 updateStatusText(`❌ 生成失败：${errorMessage}`);
+                 
+                 // 更新状态详情，显示解决建议
+                 const statusDetails = document.getElementById('statusDetails');
+                 if (statusDetails) {
+                     statusDetails.innerHTML = `
+                         <div style="color: #ff6b6b; margin-bottom: 10px; font-weight: 600;">
+                             💡 解决建议：${solutionTips}
+                         </div>
+                         <div style="color: rgba(255, 255, 255, 0.8); font-size: 14px; text-align: left; line-height: 1.6;">
+                             🔧 请检查：<br>
+                             • 网络连接是否正常<br>
+                             • API Key 是否有效<br>
+                             • 提示词是否符合要求<br>
+                             • 是否超出API调用限制<br>
+                             • 模型选择是否正确
+                         </div>
+                     `;
+                 }
+                 
+                                   // 显示错误状态，按钮显示"生成失败"
+                  showGenerationStatus(true, true);
+                  
+                  // 3秒后自动隐藏错误状态，让用户重新尝试
+                  setTimeout(() => {
+                      showGenerationStatus(false);
+                  }, 3000);
+            } finally {
+                isGenerating = false;
+            }
+        }
+        
+        // 获取生成参数
+        function getGenerationParams(prompt) {
+            return {
+                prompt: prompt,
+                model: document.getElementById('modelSelect').value,
+                size: document.getElementById('imageSize').value,
+                count: parseInt(document.getElementById('imageCount').value),
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+        // 调用千帆ModelBuilder API生成图片
+        async function callQianfanModelBuilderAPI(params) {
+            try {
+                const url = `https://qianfan.baidubce.com/v2/images/generations`; // 千帆ModelBuilder的图像生成接口
+                const authorizationHeader = `Bearer bce-v3/ALTAK-ebb6lG4iSCzFMAnEMcwqW/388eb5d7642e42aa96b933903770a75a221bf30d`; // 您的千帆ModelBuilder API Key
+                
+                // 构建请求参数
+                const requestBody = {
+                    model: params.model,
+                    prompt: params.prompt,
+                    n: params.count,
+                    size: params.size,
+                    // 其他可选参数如refer_image, user, steps, seed, guidance, stream根据需求添加
+                };
+                
+                // 模拟进度更新
+                const progressSteps = ['分析提示词...', 'AI构思中...', '开始生成...', '细节渲染...', '等待API响应...'];
+                let currentProgress = 0;
+                const interval = setInterval(() => {
+                    if (currentProgress < 90) { // 模拟到90%等待真实API响应
+                        currentProgress += 5;
+                        updateProgress(currentProgress);
+                        updateStatusText(progressSteps[Math.floor(currentProgress / 20)] || '正在处理...');
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 500);
+
+                // 调用API
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authorizationHeader
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                clearInterval(interval); // 停止模拟进度
+                updateProgress(95); // 确保在API响应前达到高进度
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 429) {
+                        throw new Error(`API调用失败：请求过于频繁（429 Too Many Requests）。请检查您的API Key配额或稍后再试。错误信息：${errorData.error_msg || '未知'}`);
+                    } else {
+                        throw new Error(`API调用失败: ${response.status} - ${errorData.error_msg || '未知错误'}`);
+                    }
+                }
+                
+                const data = await response.json();
+                
+                if (data.error_code) {
+                    throw new Error(`千帆ModelBuilder错误: ${data.error_msg}`);
+                }
+                
+                if (!data.data || data.data.length === 0 || !data.data[0].url) {
+                    throw new Error('API返回数据格式错误或未返回图片URL');
+                }
+                
+                // 返回生成的图片数据
+                updateProgress(100); // 完成进度
+                return {
+                    success: true,
+                    imageUrl: data.data[0].url,
+                    taskId: data.id // 千帆ModelBuilder返回的是id，不是task_id
+                };
+                
+            } catch (error) {
+                console.error('千帆ModelBuilder API调用失败:', error);
+                throw error;
+            }
+        }
+        
+        // 模拟图片生成过程（当API未配置时使用）
+        async function simulateImageGeneration(params) {
+            const steps = [
+                '正在分析您的描述...',
+                'AI正在构思创意...',
+                '正在生成图片...',
+                '正在优化细节...',
+                '即将完成...'
+            ];
+            
+            for (let i = 0; i < steps.length; i++) {
+                updateStatusText(steps[i]);
+                updateProgress((i + 1) / steps.length * 100);
+                await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
+            }
+            
+            updateProgress(100);
+            updateStatusText('生成完成！');
+        }
+        
+        // 显示/隐藏生成状态
+        function showGenerationStatus(show, isError = false) {
+            const statusElement = document.getElementById('generationStatus');
+            const generateBtn = document.getElementById('generateBtn');
+            const loadingSpinner = generateBtn.querySelector('.loading-spinner');
+            
+            if (show && !isError) {
+                // 正常生成状态
+                statusElement.classList.add('active');
+                generateBtn.disabled = true;
+                if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
+                generateBtn.innerHTML = `<span class="loading-spinner"></span> 生成中...`;
+            } else if (show && isError) {
+                // 错误状态
+                statusElement.classList.add('active');
+                generateBtn.disabled = false;
+                if (loadingSpinner) loadingSpinner.style.display = 'none';
+                generateBtn.innerHTML = '❌ 生成失败';
+            } else {
+                // 隐藏状态，恢复正常
+                statusElement.classList.remove('active');
+                generateBtn.disabled = false;
+                if (loadingSpinner) loadingSpinner.style.display = 'none';
+                generateBtn.innerHTML = '🎨 生成图片';
+                
+                // 完全重置所有状态
+                updateProgress(0);
+                updateStatusText('正在生成您的创意图片...');
+                
+                // 重置状态详情为默认文本
+                const statusDetails = document.getElementById('statusDetails');
+                if (statusDetails) {
+                    statusDetails.innerHTML = '请耐心等待，AI正在创作中...';
+                }
+                
+                // 确保生成状态完全重置
+                isGenerating = false;
+            }
+        }
+        
+        // 更新状态文本
+        function updateStatusText(text) {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = text;
+        }
+        
+        // 更新进度条
+        function updateProgress(percentage) {
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = percentage + '%';
+        }
+        
+        // 渲染图片网格
+        function renderImageGrid() {
+            const imageGrid = document.getElementById('imageGrid');
+            
+            if (generatedImages.length === 0) {
+                imageGrid.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🎨 开始您的创作之旅</h3>
+                        <p>在上方输入您的创意描述，点击生成按钮，AI将为您创作独特的图片作品</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            imageGrid.innerHTML = generatedImages.map(image => `
+                <div class="image-card">
+                                         <img src="${image.imageUrl}" alt="AI生成的图片" class="generated-image" 
+                          onclick="previewImage('${image.imageUrl}')" 
+                          style="cursor: pointer;"
+                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="generated-image fallback-image" style="display: none; flex-direction: column; align-items: center; justify-content: center;">
+                        <div>🚫</div>
+                        <div>图片加载失败</div>
+                        <div style="font-size: 10px; margin-top: 5px;">请尝试重新下载或生成</div>
+                    </div>
+                    <div class="image-info">
+                        <div class="image-prompt">${image.prompt}</div>
+                        <div class="image-meta">
+                            <span>${image.timestamp}</span>
+                            <span>${image.params.size} / ${image.params.model}</span>
+                        </div>
+                    </div>
+                                         <div class="image-actions">
+                         <button class="action-btn copy-btn" onclick="copyImageUrl('${image.imageUrl}')" title="复制图片链接">
+                             🔗 复制链接
+                         </button>
+                         <button class="action-btn delete-btn" onclick="deleteImage(${image.id})">
+                             🗑️ 删除
+                         </button>
+                     </div>
+                </div>
+            `).join('');
+        }
+        
+                 // 下载图片文件（参照软件库页面的实现方式）
+         async function downloadImageFile(imageUrl, filename) {
+             console.log('开始下载图片:', imageUrl);
+             
+             try {
+                 // 显示下载开始提示
+                 alert(`开始下载: ${filename}\n\n下载完成后请查看浏览器下载列表。`);
+                 
+                 // 使用fetch下载文件（参照软件库页面的方式）
+                 const response = await fetch(imageUrl, {
+                     mode: 'cors',
+                     cache: 'no-cache'
+                 });
+                 
+                 if (!response.ok) {
+                     throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+                 }
+                 
+                 const imageBlob = await response.blob();
+                 const url = window.URL.createObjectURL(imageBlob);
+                 
+                 const link = document.createElement('a');
+                 link.href = url;
+                 link.download = filename;
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+                 
+                 // 清理URL对象
+                 window.URL.revokeObjectURL(url);
+                 
+                 console.log('图片下载成功:', filename);
+                 
+             } catch (error) {
+                 console.error('下载失败:', error);
+                 
+                 // 如果fetch失败，尝试直接打开链接
+                 try {
+                     console.log('fetch下载失败，尝试直接打开链接...');
+                     window.open(imageUrl, '_blank');
+                     
+                     // 提示用户手动保存
+                     setTimeout(() => {
+                         alert(`自动下载失败，已在新标签页中打开图片。\n\n请右键图片选择"图片另存为..."来保存图片。\n\n失败原因：${error.message || '网络或跨域限制'}`);
+                     }, 1000);
+                     
+                 } catch (directError) {
+                     console.error('直接打开也失败:', directError);
+                     alert(`下载失败: ${filename}\n\n失败原因：${error.message || '网络或跨域限制'}\n\n请尝试点击"预览"按钮，然后右键图片选择"另存为..."。`);
+                 }
+             }
+         }
+        
+
+        
+        
+        
+        
+        
+        // 分享图片功能已移除
+        function shareImage(imageId) {
+            alert('分享功能已移除。');
+        }
+        
+        // 删除图片
+        function deleteImage(imageId) {
+            if (confirm('确定要删除这张图片吗？')) {
+                generatedImages = generatedImages.filter(img => img.id !== imageId);
+                saveImagesToStorage();
+                renderImageGrid();
+            }
+        }
+        
+        // 保存图片到本地存储
+        function saveImagesToStorage() {
+            try {
+                localStorage.setItem('aiPaintingImages', JSON.stringify(generatedImages));
+            } catch (error) {
+                console.error('保存失败:', error);
+            }
+        }
+        
+        // 从本地存储加载图片
+        function loadSavedImages() {
+            try {
+                const saved = localStorage.getItem('aiPaintingImages');
+                if (saved) {
+                    generatedImages = JSON.parse(saved);
+                    renderImageGrid(); // 加载后立即渲染一次
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+        
+        // 创建粒子效果
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            if (!particlesContainer) return;
+            
+            // 减少粒子数量以提升性能
+            const particleCount = 20;
+            
+            // 使用 requestAnimationFrame 优化渲染
+            const createParticle = (index) => {
+                if (index >= particleCount) return;
+                
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                particlesContainer.appendChild(particle);
+                
+                // 分批创建粒子，避免阻塞主线程
+                requestAnimationFrame(() => createParticle(index + 1));
+            };
+            
+            createParticle(0);
+        }
+        
+        // 页面可见性变化处理（用户切换页面时保持生成状态）
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('页面隐藏，但生成过程继续...');
+                // 页面隐藏时暂停粒子动画以节省资源
+                const particles = document.querySelectorAll('.particle');
+                particles.forEach(particle => {
+                    particle.style.animationPlayState = 'paused';
+                });
+            } else {
+                console.log('页面重新可见');
+                // 页面可见时恢复粒子动画
+                const particles = document.querySelectorAll('.particle');
+                particles.forEach(particle => {
+                    particle.style.animationPlayState = 'running';
+                });
+            }
+        });
+        
+        // 页面卸载前清理资源
+        window.addEventListener('beforeunload', function() {
+            // 清理可能的内存泄漏
+            generatedImages = [];
+            if (window.particleInterval) {
+                clearInterval(window.particleInterval);
+            }
+        });
+        
+                 // 预览图片
+         function previewImage(imageUrl) {
+             // 在新标签页中打开图片
+             window.open(imageUrl, '_blank');
+         }
+         
+         // 复制图片链接到剪贴板
+         async function copyImageUrl(imageUrl) {
+            try {
+                await navigator.clipboard.writeText(imageUrl);
+                
+                // 显示成功提示
+                const successTip = document.createElement('div');
+                successTip.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: rgba(76, 175, 80, 0.9);
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 25px;
+                    font-size: 14px;
+                    z-index: 10001;
+                    animation: slideInRight 0.3s ease-out;
+                `;
+                successTip.textContent = '✅ 图片链接已复制到剪贴板';
+                document.body.appendChild(successTip);
+                
+                // 3秒后自动消失
+                setTimeout(() => {
+                    successTip.style.animation = 'slideOutRight 0.3s ease-out';
+                    setTimeout(() => {
+                        if (successTip.parentNode) {
+                            successTip.parentNode.removeChild(successTip);
+                        }
+                    }, 300);
+                }, 3000);
+                
+                console.log('图片链接复制成功:', imageUrl);
+                
+            } catch (error) {
+                console.error('复制失败:', error);
+                
+                // 降级到传统方法
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = imageUrl;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    // 显示成功提示
+                    alert('✅ 图片链接已复制到剪贴板\n\n链接有效期：24小时\n请在有效期内使用链接');
+                    
+                } catch (fallbackError) {
+                    console.error('降级复制也失败:', fallbackError);
+                    alert('复制失败，请手动复制以下链接：\n\n' + imageUrl);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

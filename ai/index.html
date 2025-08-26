@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI 智能助手：多模型对话、标签会话、轻量界面与流畅体验。">
+    <meta name="theme-color" content="#667eea">
+    <link rel="canonical" href="https://289872.xyz/ai">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="黄金树恩惠 - AI 智能助手">
+    <meta property="og:description" content="支持 GPT-4o、DeepSeek 等多模型的中文对话助手，简单好用。">
+    <meta property="og:image" content="/assets/img/aiph.jpg">
+    <meta property="og:url" content="/ai">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://api.chatanywhere.com.cn" crossorigin>
+    <link rel="preload" as="image" href="/assets/img/aiph.webp">
+    <link rel="prefetch" href="/">
+    <link rel="prefetch" href="/downloads">
+    <link rel="icon" href="/assets/img/icon.jpg" type="image/jpeg">
+    <link rel="shortcut icon" href="/assets/img/icon.jpg" type="image/jpeg">
+    <title>黄金树恩惠</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #333333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        /* 背景图片懒加载（优先WebP） */
+        body.loaded {
+            background-image: url('/assets/img/aiph.webp');
+        }
+        
+        /* WebP不支持时的回退 */
+        @supports not (background-image: url('/assets/img/aiph.webp')) {
+            body.loaded {
+                background-image: url('/assets/img/aiph.jpg');
+            }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            min-height: calc(100vh - 40px);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(30px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        header {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideDown 0.6s ease-out 0.2s both;
+            position: relative;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            color: #ffffff; /* 更改为白色，与导航按钮保持一致 */
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 移除旧的AI绘画按钮样式 */
+        /* .ai-painting-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        } */
+        
+        /* .ai-painting-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        } */
+        
+        /* 移除旧的返回按钮样式 */
+        /* .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: #333333;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        } */
+        
+        /* .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        } */
+        
+        /* 导航按钮容器 */
+        .nav-buttons {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+        
+        /* 导航按钮通用样式 */
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            text-decoration: none;
+            display: inline-block;
+            /* animation: fadeInUp 1s ease-out 0.6s both; */ /* 动画如果需要可以启用 */
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 60vh;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 10px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeIn 0.8s ease-out 0.4s both;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-break: break-word;
+            font-weight: 500;
+            animation: messageSlideIn 0.5s ease-out;
+        }
+        
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .user-message {
+            background: rgba(103, 126, 234, 0.3);
+            color: #333333;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+            border: 1px solid rgba(103, 126, 234, 0.4);
+        }
+        
+        .ai-message {
+            background: rgba(255, 255, 255, 0.15);
+            color: #333333;
+            border-bottom-left-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .input-area {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            margin: 0 10px 10px 10px;
+            border-radius: 0 0 15px 15px;
+            animation: slideUp 0.6s ease-out 0.6s both;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #333333;
+            font-size: 16px;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: rgba(103, 126, 234, 0.5);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .message-input::placeholder {
+            color: rgba(51, 51, 51, 0.6);
+        }
+        
+        .send-btn {
+            background: rgba(103, 126, 234, 0.6);
+            color: #333333;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            margin-left: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .send-btn:hover {
+            background: rgba(103, 126, 234, 0.8);
+            transform: translateY(-2px);
+        }
+        
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-x: auto;
+            animation: slideDown 0.6s ease-out 0.3s both;
+        }
+        
+        .tab {
+            background: rgba(255, 255, 255, 0.2);
+            color: #333333;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 15px;
+            margin-right: 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: rgba(103, 126, 234, 0.4);
+            color: #333333;
+            border-color: rgba(103, 126, 234, 0.6);
+        }
+        
+        .tab-close {
+            background: rgba(255, 107, 107, 0.3);
+            color: #333333;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            margin-left: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-close:hover {
+            background: rgba(255, 150, 150, 0.8);
+        }
+        
+        .add-tab-btn {
+            background: rgba(78, 205, 196, 0.6);
+            color: #333333;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .add-tab-btn:hover {
+            background: rgba(78, 205, 196, 0.8);
+            transform: translateY(-2px);
+        }
+        
+        .api-notice {
+            background: rgba(255, 193, 7, 0.15);
+            color: #333333;
+            padding: 10px 15px;
+            margin: 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out 0.5s both;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #333333;
+            font-size: 0.9em;
+            border-radius: 0 0 20px 20px;
+            animation: fadeIn 0.8s ease-out 0.7s both;
+        }
+        
+        /* 浮动粒子效果 */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
+            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+        }
+        
+        /* 鼠标跟随特效 */
+        .cursor-follower {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(103, 126, 234, 0.7) 50%, rgba(255, 255, 255, 0.3) 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(103, 126, 234, 0.6), 0 0 25px rgba(255, 255, 255, 0.4);
+            transform: translate(-50%, -50%);
+            transition: none;
+            mix-blend-mode: screen;
+        }
+        
+        .cursor-follower.clicked {
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.95) 0%, rgba(255, 193, 7, 0.8) 50%, rgba(255, 215, 0, 0.4) 100%);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7), 0 0 35px rgba(255, 193, 7, 0.5);
+            transform: translate(-50%, -50%) scale(1.5);
+            animation: clickEffect 0.3s ease-out;
+        }
+        
+        @keyframes clickEffect {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(2);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 浮动粒子 -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- 鼠标跟随容器 -->
+    <div class="cursor-follower" id="cursorFollower"></div>
+    
+    <div class="container">
+        <header>
+            <h1>🤖 AI 智能助手</h1>
+            <!-- 导航按钮 -->
+            <div class="nav-buttons">
+                <a href="/ai-painting" class="nav-btn">🎨 AI绘画</a>
+                <a href="/" class="nav-btn" onclick="returnToHome()">🏠 返回首页</a>
+            </div>
+        </header>
+        
+                 <div class="api-notice">
+             <strong>⚠️ API使用限制：</strong> 200请求/天/IP&Key
+             <br><small style="opacity: 0.8;">💡 如果遇到"请求过于频繁"错误，请点击"+"按钮切换其他模型</small>
+         </div>
+        
+        <div class="tabs-container" id="tabsContainer">
+            <!-- 标签页将在这里动态添加 -->
+        </div>
+        
+                 <div class="chat-area" id="chatContainer">
+             <!-- 聊天内容将在这里动态显示 -->
+         </div>
+        
+        <div class="input-area">
+            <input type="text" class="message-input" id="userInput" placeholder="输入你的问题...">
+            <button class="send-btn" id="sendBtn">发送</button>
+        </div>
+        
+        <footer>
+            <p>© 2025 AI智能助手 | 作者：黄金树 | API by ChatAnywhere</p>
+        </footer>
+    </div>
+
+    <script>
+        // 返回主页函数 (现在直接跳转，因为点击事件已在a标签上)
+        function returnToHome() {
+            sessionStorage.setItem('returningFromOtherPage', 'true');
+            // window.location.href = 'index.html'; // 已通过a标签的href处理
+        }
+        
+        // 页面加载优化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 预加载背景图片
+            preloadBackgroundImage();
+            
+            // 创建粒子效果
+            createParticles();
+            
+            // 初始化鼠标跟随特效
+            initCursorTrail();
+            
+            initFirstTab();
+            setupEventListeners();
+        });
+        
+        // 预加载背景图片（优先WebP）
+        function preloadBackgroundImage() {
+            const webpImage = '/assets/img/aiph.webp';
+            const jpgImage = '/assets/img/aiph.jpg';
+            
+            // 先尝试加载WebP
+            const img = new Image();
+            img.onload = function() {
+                document.body.style.backgroundImage = `url('${webpImage}')`;
+                document.body.classList.add('loaded');
+                console.log('WebP背景图片加载完成:', webpImage);
+                // 标记任务完成（如果存在任务系统）
+                if (typeof markTaskComplete === 'function') {
+                    markTaskComplete('backgroundImage');
+                }
+            };
+            img.onerror = function() {
+                // WebP加载失败，回退到JPG
+                console.log('WebP加载失败，回退到JPG');
+                const jpgImg = new Image();
+                jpgImg.onload = function() {
+                    document.body.style.backgroundImage = `url('${jpgImage}')`;
+                    document.body.classList.add('loaded');
+                    console.log('JPG背景图片加载完成:', jpgImage);
+                };
+                jpgImg.onerror = function() {
+                    console.log('所有背景图片加载失败，使用渐变背景');
+                };
+                jpgImg.src = jpgImage;
+            };
+            img.src = webpImage;
+        }
+        
+        const API_KEY = 'sk-9t0AEZrukDcXuPyqfNDw4FHHO0gWlF8rNLNDCdnylgHUy78U';
+        let tabs = [];
+        let currentTabId = null;
+        
+        // DOM元素
+        const tabsContainer = document.getElementById('tabsContainer');
+        const chatContainer = document.getElementById('chatContainer');
+         
+         // 创建浮动粒子
+         function createParticles() {
+             const particlesContainer = document.getElementById('particles');
+             const particleCount = 50;
+             
+             for (let i = 0; i < particleCount; i++) {
+                 const particle = document.createElement('div');
+                 particle.className = 'particle';
+                 particle.style.left = Math.random() * 100 + '%';
+                 particle.style.top = Math.random() * 100 + '%';
+                 particle.style.animationDelay = Math.random() * 6 + 's';
+                 particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                 particlesContainer.appendChild(particle);
+             }
+         }
+         
+         // 鼠标跟随特效功能
+         function initCursorTrail() {
+             const cursorFollower = document.getElementById('cursorFollower');
+             
+             // 使用requestAnimationFrame优化性能
+             let ticking = false;
+             
+             function updateCursorPosition(e) {
+                 cursorFollower.style.left = e.clientX + 'px';
+                 cursorFollower.style.top = e.clientY + 'px';
+                 ticking = false;
+             }
+             
+             // 监听鼠标移动
+             document.addEventListener('mousemove', function(e) {
+                 if (!ticking) {
+                     requestAnimationFrame(() => updateCursorPosition(e));
+                     ticking = true;
+                 }
+             });
+             
+             // 监听点击事件
+             document.addEventListener('mousedown', function(e) {
+                 if (e.target.matches('button, .feature-card, .music-player, .weather-widget, a, .language-switch, *')) {
+                     cursorFollower.classList.add('clicked');
+                 }
+             });
+             
+             document.addEventListener('mouseup', function(e) {
+                 // 延迟移除点击效果
+                 setTimeout(() => {
+                     cursorFollower.classList.remove('clicked');
+                 }, 300);
+             });
+             
+             // 鼠标离开页面时隐藏跟随器
+             document.addEventListener('mouseleave', function() {
+                 cursorFollower.style.opacity = '0';
+             });
+             
+             // 鼠标进入页面时显示跟随器
+             document.addEventListener('mouseenter', function() {
+                 cursorFollower.style.opacity = '1';
+             });
+         }
+         
+         // 初始化第一个标签页
+         function initFirstTab() {
+             const firstTab = {
+                 id: 'tab-1',
+                 model: 'gpt-4o',
+                 name: 'GPT-4o',
+                 messages: []
+             };
+             tabs.push(firstTab);
+             currentTabId = firstTab.id;
+             createTabElement(firstTab);
+             switchToTab(firstTab.id);
+         }
+         
+         // 创建标签页元素
+         function createTabElement(tab) {
+             const tabElement = document.createElement('div');
+             tabElement.className = 'tab';
+             tabElement.dataset.tabId = tab.id;
+             tabElement.innerHTML = `
+                 ${tab.name}
+                 <button class="tab-close">×</button>
+             `;
+             
+             const closeBtn = tabElement.querySelector('.tab-close');
+             closeBtn.onclick = (e) => {
+                 e.stopPropagation();
+                 closeTab(tab.id);
+             };
+             
+             tabElement.onclick = () => switchToTab(tab.id);
+             tabsContainer.insertBefore(tabElement, getAddTabBtn());
+         }
+         
+         // 获取添加按钮
+         function getAddTabBtn() {
+             let addTabBtn = tabsContainer.querySelector('.add-tab-btn');
+             if (!addTabBtn) {
+                 addTabBtn = document.createElement('button');
+                 addTabBtn.className = 'add-tab-btn';
+                 addTabBtn.innerHTML = '+';
+                 addTabBtn.title = '添加新聊天';
+                 addTabBtn.onclick = showModelSelector;
+                 tabsContainer.appendChild(addTabBtn);
+             }
+             return addTabBtn;
+         }
+         
+         // 创建新标签页
+         function createNewTab(model) {
+             const modelNames = {
+                 'gpt-4o': 'GPT-4o',
+                 'gpt-4o-ca': 'GPT-4o-CA',
+                 'gpt-4o-mini': 'GPT-4o-Mini',
+                 'gpt-4o-mini-ca': 'GPT-4o-Mini-CA',
+                 'gpt-4o-mini-2024-07-18': 'GPT-4o-Mini-2024-07-18',
+                 'gpt-4o-mini-2024-07-18-ca': 'GPT-4o-Mini-2024-07-18-CA',
+                 'gpt-4o-2024-05-13': 'GPT-4o-2024-05-13',
+                 'gpt-4.1': 'GPT-4.1',
+                 'gpt-4.1-mini': 'GPT-4.1-Mini',
+                 'gpt-4.1-nano': 'GPT-4.1-Nano',
+                 'gpt-4.1-mini-2025-04-14': 'GPT-4.1-Mini-2025-04-14',
+                 'gpt-4.1-nano-2025-04-14': 'GPT-4.1-Nano-2025-04-14',
+                 'deepseek-chat': 'DeepSeek-Chat',
+                 'deepseek-v3': 'DeepSeek-V3',
+                 'deepseek-r1': 'DeepSeek-R1',
+                 'deepseek-r1-250528': 'DeepSeek-R1-250528',
+                 'gpt-3.5-turbo': 'GPT-3.5-Turbo',
+                 'gpt-3.5-turbo-ca': 'GPT-3.5-Turbo-CA',
+                 'gpt-3.5-turbo-0125': 'GPT-3.5-Turbo-0125',
+                 'gpt-3.5-turbo-1106': 'GPT-3.5-Turbo-1106'
+             };
+             
+             const tabId = 'tab-' + Date.now();
+             const newTab = {
+                 id: tabId,
+                 model: model,
+                 name: modelNames[model],
+                 messages: []
+             };
+             
+             tabs.push(newTab);
+             createTabElement(newTab);
+             switchToTab(tabId);
+         }
+         
+         // 切换到标签页
+         function switchToTab(tabId) {
+             document.querySelectorAll('.tab').forEach(tab => {
+                 tab.classList.remove('active');
+             });
+             document.querySelector(`[data-tab-id="${tabId}"]`).classList.add('active');
+             
+             currentTabId = tabId;
+             const currentTab = tabs.find(tab => tab.id === tabId);
+             
+             chatContainer.innerHTML = '';
+             
+             if (currentTab.messages.length === 0) {
+                 const welcomeDiv = document.createElement('div');
+                 welcomeDiv.className = 'message ai-message';
+                 welcomeDiv.textContent = `你好！我是 ${currentTab.name} AI助手，有什么我可以帮助你的？`;
+                 chatContainer.appendChild(welcomeDiv);
+             } else {
+                 currentTab.messages.forEach(msg => {
+                     addMessageToChat(msg.sender, msg.text, false);
+                 });
+             }
+         }
+         
+         // 关闭标签页
+         function closeTab(tabId) {
+             if (tabs.length <= 1) {
+                 alert('至少需要保留一个聊天标签页！');
+                 return;
+             }
+             
+             const tabIndex = tabs.findIndex(tab => tab.id === tabId);
+             tabs.splice(tabIndex, 1);
+             
+             const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+             tabElement.remove();
+             
+             if (currentTabId === tabId) {
+                 const nextTab = tabs[Math.max(0, tabIndex - 1)];
+                 switchToTab(nextTab.id);
+             }
+         }
+         
+         // 显示模型选择器
+         function showModelSelector() {
+             // 创建模型选择器
+             const selector = document.createElement('div');
+             selector.style.cssText = `
+                 position: fixed;
+                 top: 50%;
+                 left: 50%;
+                 transform: translate(-50%, -50%);
+                 background: rgba(255, 255, 255, 0.15);
+                 backdrop-filter: blur(30px);
+                 border: 1px solid rgba(255, 255, 255, 0.3);
+                 border-radius: 20px;
+                 padding: 30px;
+                 z-index: 1000;
+                 min-width: 300px;
+                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+             `;
+             
+             selector.innerHTML = `
+                 <h3 style="text-align: center; margin-bottom: 20px; color: #ffffff; font-size: 18px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);">选择AI模型</h3>
+                 <div style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+                     <div style="margin-bottom: 10px; color: #ffffff; font-weight: bold; text-align: center;">GPT-4o 系列</div>
+                     <button class="model-option" data-model="gpt-4o" style="
+                         background: rgba(103, 126, 234, 0.3);
+                         color: #ffffff;
+                         border: 1px solid rgba(103, 126, 234, 0.5);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o (推荐)</button>
+                     <button class="model-option" data-model="gpt-4o-ca" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o-CA</button>
+                     <button class="model-option" data-model="gpt-4o-mini" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o-Mini</button>
+                     <button class="model-option" data-model="gpt-4o-mini-ca" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o-Mini-CA</button>
+                     <button class="model-option" data-model="gpt-4o-mini-2024-07-18" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o-Mini-2024-07-18</button>
+                     <button class="model-option" data-model="gpt-4o-mini-2024-07-18-ca" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o-Mini-2024-07-18-CA</button>
+                     <button class="model-option" data-model="gpt-4o-2024-05-13" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4o-2024-05-13</button>
+                     
+                     <div style="margin: 15px 0 10px 0; color: #ffffff; font-weight: bold; text-align: center;">GPT-4.1 系列</div>
+                     <button class="model-option" data-model="gpt-4.1" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4.1</button>
+                     <button class="model-option" data-model="gpt-4.1-mini" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4.1-Mini</button>
+                     <button class="model-option" data-model="gpt-4.1-nano" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4.1-Nano</button>
+                     <button class="model-option" data-model="gpt-4.1-mini-2025-04-14" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4.1-Mini-2025-04-14</button>
+                     <button class="model-option" data-model="gpt-4.1-nano-2025-04-14" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-4.1-Nano-2025-04-14</button>
+                     
+                     <div style="margin: 15px 0 10px 0; color: #ffffff; font-weight: bold; text-align: center;">DeepSeek 系列</div>
+                     <button class="model-option" data-model="deepseek-chat" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">DeepSeek-Chat</button>
+                     <button class="model-option" data-model="deepseek-v3" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">DeepSeek-V3</button>
+                     <button class="model-option" data-model="deepseek-r1" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">DeepSeek-R1</button>
+                     <button class="model-option" data-model="deepseek-r1-250528" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">DeepSeek-R1-250528</button>
+                     
+                     <div style="margin: 15px 0 10px 0; color: #ffffff; font-weight: bold; text-align: center;">GPT-3.5 系列</div>
+                     <button class="model-option" data-model="gpt-3.5-turbo" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-3.5-Turbo</button>
+                     <button class="model-option" data-model="gpt-3.5-turbo-ca" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-3.5-Turbo-CA</button>
+                     <button class="model-option" data-model="gpt-3.5-turbo-0125" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-3.5-Turbo-0125</button>
+                     <button class="model-option" data-model="gpt-3.5-turbo-1106" style="
+                         background: rgba(255, 255, 255, 0.2);
+                         color: #ffffff;
+                         border: 1px solid rgba(255, 255, 255, 0.3);
+                         padding: 12px 20px;
+                         border-radius: 15px;
+                         cursor: pointer;
+                         font-size: 16px;
+                         transition: all 0.3s;
+                     ">GPT-3.5-Turbo-1106</button>
+                 </div>
+                 <button id="cancelModel" style="
+                     background: rgba(255, 107, 107, 0.6);
+                     color: white;
+                     border: none;
+                     padding: 10px 20px;
+                     border-radius: 15px;
+                     margin-top: 20px;
+                     width: 100%;
+                     cursor: pointer;
+                     font-size: 16px;
+                     transition: all 0.3s;
+                 ">取消</button>
+             `;
+             
+             // 添加样式
+             const style = document.createElement('style');
+             style.textContent = `
+                 .model-option:hover {
+                     background: rgba(103, 126, 234, 0.3) !important;
+                     border-color: rgba(103, 126, 234, 0.5) !important;
+                     transform: translateY(-2px);
+                 }
+                 #cancelModel:hover {
+                     background: rgba(255, 107, 107, 0.8) !important;
+                     transform: translateY(-2px);
+                 }
+             `;
+             document.head.appendChild(style);
+             
+             // 添加遮罩
+             const overlay = document.createElement('div');
+             overlay.style.cssText = `
+                 position: fixed;
+                 top: 0;
+                 left: 0;
+                 width: 100%;
+                 height: 100%;
+                 background: rgba(0, 0, 0, 0.5);
+                 z-index: 999;
+             `;
+             
+             document.body.appendChild(overlay);
+             document.body.appendChild(selector);
+             
+             // 事件处理
+             selector.querySelectorAll('.model-option').forEach(btn => {
+                 btn.addEventListener('click', function() {
+                     createNewTab(this.dataset.model);
+                     document.body.removeChild(overlay);
+                     document.body.removeChild(selector);
+                 });
+             });
+             
+             selector.querySelector('#cancelModel').addEventListener('click', function() {
+                 document.body.removeChild(overlay);
+                 document.body.removeChild(selector);
+             });
+             
+             overlay.addEventListener('click', function() {
+                 document.body.removeChild(overlay);
+                 document.body.removeChild(selector);
+             });
+         }
+        
+                 // 设置事件监听器
+         function setupEventListeners() {
+             // 发送消息
+             document.getElementById('sendBtn').addEventListener('click', sendMessage);
+             document.getElementById('userInput').addEventListener('keypress', function(e) {
+                 if (e.key === 'Enter') {
+                     sendMessage();
+                 }
+             });
+         }
+        
+                 function sendMessage() {
+             const input = document.getElementById('userInput');
+             const message = input.value.trim();
+             
+             if (!message) return;
+             
+             const currentTab = tabs.find(tab => tab.id === currentTabId);
+             if (!currentTab) return;
+             
+             // 添加用户消息
+             addMessageToChat('user', message);
+             currentTab.messages.push({ sender: 'user', text: message });
+             input.value = '';
+             
+             // 显示加载状态
+             const loadingDiv = document.createElement('div');
+             loadingDiv.className = 'message ai-message';
+             loadingDiv.textContent = '思考中...';
+             chatContainer.appendChild(loadingDiv);
+             chatContainer.scrollTop = chatContainer.scrollHeight;
+             
+             // 调用API
+             fetchAIResponse(message, currentTab.model)
+                 .then(response => {
+                     chatContainer.removeChild(loadingDiv);
+                     addMessageToChat('ai', response);
+                     currentTab.messages.push({ sender: 'ai', text: response });
+                     chatContainer.scrollTop = chatContainer.scrollHeight;
+                 })
+                                   .catch(error => {
+                      chatContainer.removeChild(loadingDiv);
+                      
+                      // 如果是429错误，显示模型切换提示
+                      if (error.message.includes('429') || error.message.includes('请求过于频繁')) {
+                          addMessageToChat('ai', '抱歉，发生了错误：' + error.message);
+                          chatContainer.scrollTop = chatContainer.scrollHeight;
+                          
+                          // 延迟显示模型切换提示
+                          setTimeout(() => {
+                              showModelSwitchTip(currentTab.model);
+                          }, 1000);
+                      } else {
+                          addMessageToChat('ai', '抱歉，发生了错误：' + error.message);
+                          chatContainer.scrollTop = chatContainer.scrollHeight;
+                      }
+                  });
+         }
+        
+                 function addMessageToChat(sender, text, saveToHistory = true) {
+             const messageDiv = document.createElement('div');
+             messageDiv.className = `message ${sender}-message`;
+             messageDiv.textContent = text;
+             chatContainer.appendChild(messageDiv);
+             chatContainer.scrollTop = chatContainer.scrollHeight;
+         }
+        
+                 async function fetchAIResponse(prompt, model, retryCount = 0) {
+            try {
+                const response = await fetch('https://api.chatanywhere.com.cn/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            { role: 'system', content: '你是一个有用的AI助手，请用中文回答。' },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1024
+                    })
+                });
+                
+                // 处理429错误（请求频率过高）
+                if (response.status === 429 && retryCount < 3) {
+                    console.log(`请求频率过高，等待2秒后重试... (第${retryCount + 1}次重试)`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return fetchAIResponse(prompt, model, retryCount + 1);
+                }
+                
+                if (!response.ok) {
+                    let errorMessage = `HTTP ${response.status}`;
+                    if (response.status === 429) {
+                        errorMessage = '请求过于频繁，请稍后再试';
+                    } else if (response.status === 401) {
+                        errorMessage = 'API密钥无效，请检查配置';
+                    } else if (response.status === 403) {
+                        errorMessage = 'API密钥权限不足';
+                    } else if (response.status === 500) {
+                        errorMessage = '服务器内部错误，请稍后重试';
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message || 'API错误');
+                }
+                
+                return data.choices[0].message.content;
+            } catch (error) {
+                console.error('API调用失败:', error);
+                
+                // 根据错误类型返回友好的错误信息
+                if (error.message.includes('429')) {
+                    throw new Error('请求过于频繁，请稍后再试');
+                } else if (error.message.includes('401')) {
+                    throw new Error('API密钥无效，请检查配置');
+                } else if (error.message.includes('403')) {
+                    throw new Error('API密钥权限不足');
+                } else if (error.message.includes('500')) {
+                    throw new Error('服务器内部错误，请稍后重试');
+                } else if (error.message.includes('Failed to fetch')) {
+                    throw new Error('网络连接失败，请检查网络连接');
+                } else {
+                    throw new Error('请求失败，请稍后重试');
+                }
+            }
+        }
+        
+        // 显示模型切换提示
+        function showModelSwitchTip(failedModel) {
+            const tipDiv = document.createElement('div');
+            tipDiv.className = 'message ai-message model-switch-tip';
+            tipDiv.innerHTML = `
+                <div style="background: rgba(255, 193, 7, 0.2); border: 1px solid rgba(255, 193, 7, 0.4); border-radius: 10px; padding: 15px; margin-bottom: 10px;">
+                    <div style="font-weight: bold; color: #d68910; margin-bottom: 8px;">⚠️ 模型调用失败</div>
+                    <div style="color: #333; margin-bottom: 12px;">
+                        当前模型 <strong>${failedModel}</strong> 可能已达到今日使用限制或暂时不可用。
+                    </div>
+                    <div style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                        建议尝试以下操作：
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="switchToRecommendedModel()" style="
+                            background: rgba(103, 126, 234, 0.6);
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: all 0.3s;
+                        ">🚀 切换到推荐模型</button>
+                        <button onclick="showModelSelector()" style="
+                            background: rgba(78, 205, 196, 0.6);
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: all 0.3s;
+                        ">📋 手动选择模型</button>
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
+                            background: rgba(255, 107, 107, 0.6);
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: all 0.3s;
+                        ">❌ 关闭提示</button>
+                    </div>
+                </div>
+            `;
+            
+            // 添加样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .model-switch-tip button:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                }
+            `;
+            document.head.appendChild(style);
+            
+            chatContainer.appendChild(tipDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // 切换到推荐模型
+        function switchToRecommendedModel() {
+            const recommendedModels = [
+                'gpt-4o-ca',
+                'gpt-4o-mini',
+                'gpt-4o-mini-ca',
+                'gpt-4.1',
+                'gpt-4.1-mini',
+                'deepseek-chat',
+                'deepseek-v3',
+                'gpt-3.5-turbo',
+                'gpt-3.5-turbo-ca'
+            ];
+            
+            // 随机选择一个推荐模型
+            const randomModel = recommendedModels[Math.floor(Math.random() * recommendedModels.length)];
+            createNewTab(randomModel);
+            
+            // 显示切换成功提示
+            const successDiv = document.createElement('div');
+            successDiv.className = 'message ai-message';
+            successDiv.innerHTML = `
+                <div style="background: rgba(78, 205, 196, 0.2); border: 1px solid rgba(78, 205, 196, 0.4); border-radius: 10px; padding: 15px;">
+                    <div style="font-weight: bold; color: #2d5a5a; margin-bottom: 8px;">✅ 模型切换成功</div>
+                    <div style="color: #333;">
+                        已切换到 <strong>${getModelDisplayName(randomModel)}</strong>，现在可以继续聊天了！
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(successDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // 获取模型显示名称
+        function getModelDisplayName(model) {
+            const modelNames = {
+                'gpt-4o': 'GPT-4o',
+                'gpt-4o-ca': 'GPT-4o-CA',
+                'gpt-4o-mini': 'GPT-4o-Mini',
+                'gpt-4o-mini-ca': 'GPT-4o-Mini-CA',
+                'gpt-4o-mini-2024-07-18': 'GPT-4o-Mini-2024-07-18',
+                'gpt-4o-mini-2024-07-18-ca': 'GPT-4o-Mini-2024-07-18-CA',
+                'gpt-4o-2024-05-13': 'GPT-4o-2024-05-13',
+                'gpt-4.1': 'GPT-4.1',
+                'gpt-4.1-mini': 'GPT-4.1-Mini',
+                'gpt-4.1-nano': 'GPT-4.1-Nano',
+                'gpt-4.1-mini-2025-04-14': 'GPT-4.1-Mini-2025-04-14',
+                'gpt-4.1-nano-2025-04-14': 'GPT-4.1-Nano-2025-04-14',
+                'deepseek-chat': 'DeepSeek-Chat',
+                'deepseek-v3': 'DeepSeek-V3',
+                'deepseek-r1': 'DeepSeek-R1',
+                'deepseek-r1-250528': 'DeepSeek-R1-250528',
+                'gpt-3.5-turbo': 'GPT-3.5-Turbo',
+                'gpt-3.5-turbo-ca': 'GPT-3.5-Turbo-CA',
+                'gpt-3.5-turbo-0125': 'GPT-3.5-Turbo-0125',
+                'gpt-3.5-turbo-1106': 'GPT-3.5-Turbo-1106'
+            };
+            return modelNames[model] || model;
+        }
+    </script>
+</body>
+</html> 
