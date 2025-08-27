@@ -446,10 +446,27 @@
             border: 1px solid rgba(76, 175, 80, 0.5);
         }
         
-        .download-btn:hover {
-            background: rgba(76, 175, 80, 0.4);
-            transform: translateY(-2px);
-        }
+                 .download-btn:hover {
+             background: rgba(76, 175, 80, 0.4);
+             transform: translateY(-2px);
+         }
+         
+         .download-btn.downloading {
+             background: rgba(76, 175, 80, 0.6);
+             pointer-events: none;
+         }
+         
+         .download-btn.downloading::after {
+             content: '';
+             display: inline-block;
+             width: 12px;
+             height: 12px;
+             border: 2px solid rgba(255, 255, 255, 0.3);
+             border-radius: 50%;
+             border-top-color: white;
+             animation: spin 1s linear infinite;
+             margin-left: 8px;
+         }
         
         
         
@@ -476,6 +493,101 @@
          }
          
 
+        
+        /* 预览模态框 */
+        .preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .preview-modal.show {
+            opacity: 1;
+        }
+        
+        .preview-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            max-width: 90%;
+            max-height: 90%;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .preview-modal.show .preview-content {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .preview-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .preview-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .preview-actions {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            display: flex;
+            gap: 15px;
+            opacity: 0;
+            transition: all 0.3s ease 0.2s;
+        }
+        
+        .preview-modal.show .preview-actions {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        .preview-action-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .preview-action-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
         
         /* 空状态 */
         .empty-state {
@@ -630,7 +742,7 @@
                 <div class="prompt-input-group">
                     <input type="text" class="prompt-input" id="promptInput" 
                            placeholder="描述您想要生成的图片，例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格" 
-                           maxlength="200"> <!-- 初始设置为irag-1.0的200字符限制 -->
+                           maxlength="1000"> <!-- 智谱AI支持1000字符 -->
                     <button class="generate-btn" id="generateBtn" onclick="generateImage()">
                         <span class="loading-spinner" id="loadingSpinner" style="display: none;"></span>
                         🎨 生成图片
@@ -642,25 +754,25 @@
                     <div class="option-group">
                         <label for="modelSelect">模型选择</label>
                         <select id="modelSelect">
-                            <option value="irag-1.0">ERNIE IRAG (200字符)</option>
-                            <option value="flux.1-schnell">FLUX.1-schnell (512字符，仅支持英文)</option>
+                                                    <option value="cogview-4-250304">CogView-4 (推荐)</option>
+                        <option value="cogview-4">CogView-4 标准版</option>
+                        <option value="cogview-3-flash">CogView-3 Flash (快速)</option>
                         </select>
                     </div>
                     <div class="option-group">
                         <label for="imageSize">图片尺寸</label>
                         <select id="imageSize">
-                            <option value="1024x1024">1024×1024 (正方形)</option>
-                            <option value="1024x1792">1024×1792 (竖版)</option>
-                            <option value="1792x1024">1792×1024 (横版)</option>
+                                                    <option value="1024x1024">1024×1024 (正方形)</option>
+                        <option value="768x1344">768×1344 (竖版)</option>
+                        <option value="1344x768">1344×768 (横版)</option>
+                        <option value="1440x720">1440×720 (宽屏)</option>
+                        <option value="720x1440">720×1440 (竖屏)</option>
                         </select>
                     </div>
                     <div class="option-group">
                         <label for="imageCount">生成数量</label>
                         <select id="imageCount">
-                            <option value="1">1张</option>
-                            <option value="2">2张</option>
-                            <option value="3">3张</option>
-                            <option value="4">4张</option>
+                                                    <option value="1">1张</option>
                         </select>
                     </div>
                 </div>
@@ -697,15 +809,15 @@
         let generatedImages = [];
         let isGenerating = false;
         
-        // 千帆ModelBuilder API配置
+        // 智谱AI API配置
         const AI_PAINTING_CONFIG = {
-            apiKey: 'bce-v3/ALTAK-ebb6lG4iSCzFMAnEMcwqW/388eb5d7642e42aa96b933903770a75a221bf30d', // 您的千帆ModelBuilder API Key
-            endpoint: 'https://qianfan.baidubce.com/v2/images/generations', // 千帆ModelBuilder的图像生成接口
+            apiKey: '91e5f3cf5d9d4679be6c2f053120fdc2.HICxUiT9Zjh7kh2t', // 您的智谱AI API Key
+            endpoint: 'https://open.bigmodel.cn/api/paas/v4/images/generations', // 智谱AI的图像生成接口
         };
         
-        // 由于千帆ModelBuilder API直接使用API Key鉴权，不需要Access Token，此函数不再使用
-        async function getBaiduAccessToken() {
-            return null;
+        // 智谱AI API鉴权函数
+        async function getZhipuAccessToken() {
+            return AI_PAINTING_CONFIG.apiKey;
         }
         
         // 页面加载完成后初始化
@@ -796,10 +908,12 @@
             const selectedModel = modelSelect.value;
             let maxLength = 500; // 默认值，以防万一
 
-            if (selectedModel === 'irag-1.0') {
-                maxLength = 200;
-            } else if (selectedModel === 'flux.1-schnell') {
-                maxLength = 512;
+            if (selectedModel === 'cogview-4-250304') {
+                maxLength = 1000;
+            } else if (selectedModel === 'cogview-4') {
+                maxLength = 1000;
+            } else if (selectedModel === 'cogview-3-flash') {
+                maxLength = 1000;
             }
             promptInput.setAttribute('maxlength', maxLength);
             // 确保当前文本没有超出新的maxLength
@@ -843,9 +957,9 @@
                 
                 let imageResult;
                 
-                // 使用千帆ModelBuilder API
-                updateStatusText('正在调用千帆ModelBuilder生成图片...');
-                imageResult = await callQianfanModelBuilderAPI(params);
+                // 使用智谱AI API
+                updateStatusText('正在调用智谱AI生成图片...');
+                imageResult = await callZhipuAIAPI(params);
                 
                 if (!imageResult.success || !imageResult.imageUrl) {
                     throw new Error('图片生成失败或未返回图片URL');
@@ -857,7 +971,7 @@
                     prompt: prompt,
                     imageUrl: imageResult.imageUrl,
                     timestamp: new Date().toLocaleString(),
-                    params: { // 只保存千帆API实际使用的参数
+                    params: { // 只保存智谱AI API实际使用的参数
                         model: document.getElementById('modelSelect').value,
                         size: document.getElementById('imageSize').value,
                         count: parseInt(document.getElementById('imageCount').value),
@@ -947,19 +1061,20 @@
             };
         }
         
-        // 调用千帆ModelBuilder API生成图片
-        async function callQianfanModelBuilderAPI(params) {
+        // 调用智谱AI API生成图片
+        async function callZhipuAIAPI(params) {
             try {
-                const url = `https://qianfan.baidubce.com/v2/images/generations`; // 千帆ModelBuilder的图像生成接口
-                const authorizationHeader = `Bearer bce-v3/ALTAK-ebb6lG4iSCzFMAnEMcwqW/388eb5d7642e42aa96b933903770a75a221bf30d`; // 您的千帆ModelBuilder API Key
+                const url = AI_PAINTING_CONFIG.endpoint;
+                const apiKey = await getZhipuAccessToken();
+                const authorizationHeader = `Bearer ${apiKey}`;
                 
-                // 构建请求参数
+                // 构建智谱AI请求参数
                 const requestBody = {
                     model: params.model,
                     prompt: params.prompt,
-                    n: params.count,
                     size: params.size,
-                    // 其他可选参数如refer_image, user, steps, seed, guidance, stream根据需求添加
+                    quality: params.model === 'cogview-4-250304' ? 'standard' : undefined,
+                    user_id: 'user_' + Date.now() // 生成唯一用户ID
                 };
                 
                 // 模拟进度更新
@@ -1000,7 +1115,7 @@
                 const data = await response.json();
                 
                 if (data.error_code) {
-                    throw new Error(`千帆ModelBuilder错误: ${data.error_msg}`);
+                    throw new Error(`智谱AI错误: ${data.error_msg}`);
                 }
                 
                 if (!data.data || data.data.length === 0 || !data.data[0].url) {
@@ -1012,11 +1127,11 @@
                 return {
                     success: true,
                     imageUrl: data.data[0].url,
-                    taskId: data.id // 千帆ModelBuilder返回的是id，不是task_id
+                    taskId: data.id || 'zhipu_' + Date.now() // 智谱AI返回的是id，如果没有则生成一个
                 };
                 
             } catch (error) {
-                console.error('千帆ModelBuilder API调用失败:', error);
+                console.error('智谱AI API调用失败:', error);
                 throw error;
             }
         }
@@ -1125,70 +1240,83 @@
                             <span>${image.params.size} / ${image.params.model}</span>
                         </div>
                     </div>
-                                         <div class="image-actions">
-                         <button class="action-btn copy-btn" onclick="copyImageUrl('${image.imageUrl}')" title="复制图片链接">
-                             🔗 复制链接
-                         </button>
-                         <button class="action-btn delete-btn" onclick="deleteImage(${image.id})">
-                             🗑️ 删除
-                         </button>
-                     </div>
+                                                                                   <div class="image-actions">
+                          <button class="action-btn download-btn" onclick="downloadImageFile('${image.imageUrl}', 'AI绘画_${image.timestamp}.png', this)" title="下载图片">
+                              📥 下载
+                          </button>
+                          <button class="action-btn delete-btn" onclick="deleteImage(${image.id})">
+                              🗑️ 删除
+                          </button>
+                      </div>
                 </div>
             `).join('');
         }
         
-                 // 下载图片文件（参照软件库页面的实现方式）
-         async function downloadImageFile(imageUrl, filename) {
-             console.log('开始下载图片:', imageUrl);
-             
-             try {
-                 // 显示下载开始提示
-                 alert(`开始下载: ${filename}\n\n下载完成后请查看浏览器下载列表。`);
-                 
-                 // 使用fetch下载文件（参照软件库页面的方式）
-                 const response = await fetch(imageUrl, {
-                     mode: 'cors',
-                     cache: 'no-cache'
-                 });
-                 
-                 if (!response.ok) {
-                     throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
-                 }
-                 
-                 const imageBlob = await response.blob();
-                 const url = window.URL.createObjectURL(imageBlob);
-                 
-                 const link = document.createElement('a');
-                 link.href = url;
-                 link.download = filename;
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
-                 
-                 // 清理URL对象
-                 window.URL.revokeObjectURL(url);
-                 
-                 console.log('图片下载成功:', filename);
-                 
-             } catch (error) {
-                 console.error('下载失败:', error);
-                 
-                 // 如果fetch失败，尝试直接打开链接
-                 try {
-                     console.log('fetch下载失败，尝试直接打开链接...');
-                     window.open(imageUrl, '_blank');
-                     
-                     // 提示用户手动保存
-                     setTimeout(() => {
-                         alert(`自动下载失败，已在新标签页中打开图片。\n\n请右键图片选择"图片另存为..."来保存图片。\n\n失败原因：${error.message || '网络或跨域限制'}`);
-                     }, 1000);
-                     
-                 } catch (directError) {
-                     console.error('直接打开也失败:', directError);
-                     alert(`下载失败: ${filename}\n\n失败原因：${error.message || '网络或跨域限制'}\n\n请尝试点击"预览"按钮，然后右键图片选择"另存为..."。`);
-                 }
-             }
-         }
+                                                     // 下载图片文件（静默下载，无弹窗）
+           async function downloadImageFile(imageUrl, filename, buttonElement = null) {
+               console.log('开始下载图片:', imageUrl);
+               
+               // 如果提供了按钮元素，显示下载状态
+               if (buttonElement) {
+                   buttonElement.classList.add('downloading');
+                   buttonElement.textContent = '📥 下载中...';
+               }
+               
+               try {
+                   // 使用fetch下载文件
+                   const response = await fetch(imageUrl, {
+                       mode: 'cors',
+                       cache: 'no-cache'
+                   });
+                   
+                   if (!response.ok) {
+                       throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+                   }
+                   
+                   const imageBlob = await response.blob();
+                   const url = window.URL.createObjectURL(imageBlob);
+                   
+                   const link = document.createElement('a');
+                   link.href = url;
+                   link.download = filename;
+                   link.style.display = 'none'; // 隐藏链接元素
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+                   
+                   // 清理URL对象
+                   window.URL.revokeObjectURL(url);
+                   
+                   console.log('图片下载成功:', filename);
+                   
+                   // 恢复按钮状态
+                   if (buttonElement) {
+                       setTimeout(() => {
+                           buttonElement.classList.remove('downloading');
+                           buttonElement.textContent = '📥 下载';
+                       }, 1000);
+                   }
+                   
+               } catch (error) {
+                   console.error('下载失败:', error);
+                   
+                   // 恢复按钮状态
+                   if (buttonElement) {
+                       buttonElement.classList.remove('downloading');
+                       buttonElement.textContent = '📥 下载';
+                   }
+                   
+                   // 如果fetch失败，静默尝试直接打开链接
+                   try {
+                       console.log('fetch下载失败，尝试直接打开链接...');
+                       window.open(imageUrl, '_blank');
+                   } catch (directError) {
+                       console.error('直接打开也失败:', directError);
+                       // 只在完全失败时显示一个简单的提示
+                       console.log('下载失败，请手动保存图片');
+                   }
+               }
+           }
         
 
         
@@ -1287,11 +1415,7 @@
             }
         });
         
-                 // 预览图片
-         function previewImage(imageUrl) {
-             // 在新标签页中打开图片
-             window.open(imageUrl, '_blank');
-         }
+
          
          // 复制图片链接到剪贴板
          async function copyImageUrl(imageUrl) {
@@ -1348,6 +1472,86 @@
                 }
             }
         }
+        
+        // 预览图片模态框
+        function previewImage(imageUrl) {
+            const modal = document.getElementById('previewModal');
+            const previewImg = document.getElementById('previewImage');
+            previewImg.src = imageUrl;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+            
+            // 添加动画效果
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 10);
+        }
+        
+        // 关闭预览模态框
+        function closePreview() {
+            const modal = document.getElementById('previewModal');
+            modal.classList.remove('show');
+            
+            // 等待动画完成后隐藏模态框
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto'; // 恢复背景滚动
+            }, 300);
+        }
+        
+                                   // 从预览模态框下载图片
+          function downloadFromPreview() {
+              const previewImg = document.getElementById('previewImage');
+              const imageUrl = previewImg.src;
+              const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+              const downloadBtn = event.target; // 获取被点击的按钮
+              downloadImageFile(imageUrl, `AI绘画_${timestamp}.png`, downloadBtn);
+              // 下载后关闭预览模态框
+              setTimeout(() => {
+                  closePreview();
+              }, 1000);
+          }
+        
+        // 从预览模态框分享图片
+        function shareFromPreview() {
+            const previewImg = document.getElementById('previewImage');
+            const imageUrl = previewImg.src;
+            copyImageUrl(imageUrl);
+        }
+        
+        // 点击模态框背景关闭
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('previewModal');
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closePreview();
+                }
+            });
+            
+            // ESC键关闭模态框
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closePreview();
+                }
+                // 空格键预览当前图片（如果模态框已打开）
+                if (e.key === ' ' && document.getElementById('previewModal').style.display === 'block') {
+                    e.preventDefault();
+                    // 可以在这里添加其他功能
+                }
+            });
+        });
     </script>
 </body>
+
+<!-- 预览模态框 -->
+<div id="previewModal" class="preview-modal">
+    <button class="preview-close" onclick="closePreview()">×</button>
+    <div class="preview-content">
+        <img id="previewImage" class="preview-image" src="" alt="预览图片">
+    </div>
+    <div class="preview-actions">
+        <button class="preview-action-btn" onclick="downloadFromPreview()">📥 下载</button>
+        <button class="preview-action-btn" onclick="shareFromPreview()">📤 分享</button>
+    </div>
+</div>
 </html>
