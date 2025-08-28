@@ -40,13 +40,79 @@
 ## 🔗 外部服务 / API 列表
 
 - AI 聊天：ChatAnywhere API（`https://api.chatanywhere.com.cn`）
-- 天气：和风天气（HeWeather / QWeather）
+- AI 绘画：智谱 AI（ZhipuAI）BigModel 图像生成接口（`https://open.bigmodel.cn/api/paas/v4/images/generations`）
+- 天气：和风天气（QWeather / HeWeather）
 - 位置：浏览器 Geolocation API（必要时可配合 Nominatim / BigDataCloud 反查城市名）
 - 音乐：网易云音乐外链（客户端直连播放）
 - 下载资源：各条目所指向的第三方直链（图片/视频/压缩包等）
-- AI 绘画：留空位，支持对接任意“文生图”服务（按需在 `ai/painting.html` 替换为你的图片生成 API）
 
 > 以上服务均为前端直接请求。生产使用建议将私钥放在自己的后端代理，避免在浏览器暴露。
+
+---
+
+## ⚡ 快速配置（代码位置）
+
+- AI 聊天（ChatAnywhere 示例）— 文件：`ai/index.html`
+```javascript
+// 搜索并替换：API_KEY 与请求端点
+const API_KEY = '你的ChatAnywhere密钥';
+
+async function fetchAIResponse(prompt, model) {
+  const response = await fetch('https://api.chatanywhere.com.cn/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: '你是一个有用的AI助手，请用中文回答。' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1024
+    })
+  });
+  // ...错误处理略
+}
+```
+
+- AI 绘画（ZhipuAI BigModel 示例）— 文件：`ai/painting.html`
+```javascript
+// 配置（AI_PAINTING_CONFIG 与 getZhipuAccessToken）
+const AI_PAINTING_CONFIG = {
+  apiKey: '你的ZhipuAI_API_Key',
+  endpoint: 'https://open.bigmodel.cn/api/paas/v4/images/generations'
+};
+
+async function getZhipuAccessToken() {
+  return AI_PAINTING_CONFIG.apiKey; // 示例：直接返回（生产建议走后端代理）
+}
+
+// 调用
+const url = AI_PAINTING_CONFIG.endpoint;
+const apiKey = await getZhipuAccessToken();
+const authorizationHeader = `Bearer ${apiKey}`;
+const resp = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': authorizationHeader
+  },
+  body: JSON.stringify({
+    prompt: userPrompt,
+    size: selectedSize,
+    n: imageCount
+    // ...按服务商要求补充参数
+  })
+});
+```
+
+- 安全建议（强烈推荐）
+  - 千万不要在公开仓库与生产前端中暴露完整私钥；
+  - 使用自有后端代理：校验来源、注入密钥、设置调用配额与频次；
+  - 若必须前端直连，务必使用“受限 Key”（只允许指定域名与最低权限）。
 
 ---
 
@@ -62,7 +128,7 @@
 │   └── img/…                  # 背景与站点图片
 ├── ai/
 │   ├── index.html             # AI 聊天
-│   └── painting.html          # AI 绘画
+│   └── painting.html          # AI 绘画（对接 ZhipuAI BigModel）
 ├── downloads/index.html       # 软件下载
 ├── games/
 │   ├── index.html             # 游戏入口
@@ -100,14 +166,10 @@
 2. 输入消息后点击“发送”或回车。
 3. 若遇到 429/限流，将提示切换模型或自动重试。
 
-配置 API：在 `ai/index.html` 搜索 `API_KEY` 与 `fetch('https://api.chatanywhere.com.cn/v1/chat/completions'`，替换为你的服务端点与鉴权头。建议在生产环境使用后端代理或受限 Key。
-
 ### AI 绘画（`/ai/painting.html`）
 1. 输入提示词、选择尺寸与数量，点击“生成”。
 2. 生成的图片以卡片显示：点击图片进入大图预览。
 3. 图片卡片下方提供“下载 / 删除”；预览框底部提供“下载 / 分享（复制链接）”。
-
-对接自定义图片生成 API：在 `ai/painting.html` 中搜索生成逻辑（`fetch`/`generate` 相关代码），替换为你的端点与鉴权即可。
 
 ### 软件下载（`/downloads/`）
 - 切换分类、点击下载按钮直下；媒体资源支持浏览器原生预览。
@@ -125,16 +187,6 @@
 - 预览模态框：`ESC` 关闭；点击遮罩关闭
 - 音乐：空格 播放/暂停；→ 下一曲
 - 按钮、链接具备清晰的焦点/悬停状态
-
----
-
-## ⚙️ 配置与安全
-
-- 本项目不绑定任何特定服务商。聊天/绘画均可替换为任意第三方 API。
-- 前端直接暴露密钥存在泄露风险：
-  - 开发与测试可使用受限 Key；
-  - 正式环境建议走你自己的后端代理（添加鉴权、配额控制、日志审计）。
-- 图片与样式在 `assets/`，可直接替换自定义。
 
 ---
 
